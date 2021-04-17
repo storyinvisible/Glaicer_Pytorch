@@ -2,7 +2,7 @@ import os
 import torch
 import pandas as pd
 from os.path import join
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 
 
 class GlacierDataset(Dataset):
@@ -119,7 +119,7 @@ class ERA5Datasets(Dataset):
         data = []
         for path in self.paths:
             entry = self.get_data(path, months).to_numpy()
-            data.append(torch.from_numpy(entry))
+            data.append(torch.from_numpy(entry).unsqueeze(0).float())
         return data
 
 
