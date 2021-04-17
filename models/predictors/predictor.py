@@ -6,7 +6,7 @@ class Predictor(nn.Module):
         super(Predictor, self).__init__()
         if layers is None:
             raise ValueError("[ERROR] The layers cannot be empty")
-        self.predictor = nn.Sequential(**layers)
+        self.predictor = nn.Sequential(*layers)
 
     def forward(self, x):
         return self.predictor(x)
