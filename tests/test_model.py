@@ -6,7 +6,7 @@ from models.extractor.hcnn import HCNN
 from models.extractor.vcnn import VCNN
 from models.predictors.ANNPredictor import ANNPredictor
 from models.predictors.LSTMPredictor import LSTMPredictor
-from models.predictors.predictor import Predictor
+from models import Predictor, GlacierModel
 from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset
 
 
@@ -47,11 +47,9 @@ class DataLoaderTest(unittest.TestCase):
             self.assertEqual(data[i].shape, (1, 289, 12))
 
     def test_DataLoader(self):
-        smb1 = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="../glaicer_dmdt.csv")
-        data1 = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2002, path="../ECMWF_reanalysis_data")
-        smb2 = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="../glaicer_dmdt.csv")
-        data2 = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2002, path="../ECMWF_reanalysis_data")
-        dataset = GlacierDataset([data1, data2], [smb1, smb2])
+        smb = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="../glaicer_dmdt.csv")
+        data = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2002, path="../ECMWF_reanalysis_data")
+        dataset = GlacierDataset([data, data], [smb, smb])
         loader = DataLoader(dataset, batch_size=1)
         for feature, s in loader:
             self.assertEqual(feature[0].shape, (1, 1, 289, 12))
@@ -73,18 +71,24 @@ class FeatureExtractorModelTest(unittest.TestCase):
     def test_hcnn(self):
         model = HCNN(output_dim=256)
         for feature, s in self.loader:
-            tensor = torch.cat(feature, dim=1)
-            out = model(tensor)
+            out = model(feature)
             self.assertEqual(out.shape, (16, 256))
             break
 
     def test_vcnn(self):
         model = VCNN(output_dim=256)
         for feature, s in self.loader:
-            tensor = torch.cat(feature, dim=1)
-            out = model(tensor)
+            out = model(feature)
             self.assertEqual(out.shape, (16, 256))
             break
+
+    def test_hcnn_lstm(self):
+        extra = VCNN(output_dim=256)
+        pred = LSTMPredictor(input_dim=256, hidden_dim=256, n_layers=2, bi_direction=True, p=0.5)
+        model = GlacierModel(extra=extra, pred=pred)
+        for feature, s in self.loader:
+            out = model(feature)
+            self.assertEqual((16, 1), out.shape)
 
 
 if __name__ == '__main__':

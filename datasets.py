@@ -120,7 +120,7 @@ class ERA5Datasets(Dataset):
         for path in self.paths:
             entry = self.get_data(path, months).to_numpy()
             data.append(torch.from_numpy(entry).unsqueeze(0).float())
-        return data
+        return torch.cat(data, dim=0)
 
 
 class Glacier_dmdt(Dataset):
