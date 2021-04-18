@@ -47,7 +47,7 @@ if __name__ == '__main__':
     test_loader = train_loader
     trainer(HCNN(in_channel=5, output_dim=256, vertical_dim=289, device=device),
             LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1,
-                          bi_direction=False, p=0.5),
+                          bidirection=False, p=0.5),
             train_loader=train_loader, test_loader=test_loader,
             loss_func=torch.nn.MSELoss,
             optimizer=torch.optim.Adam,

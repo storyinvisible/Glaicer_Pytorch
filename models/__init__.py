@@ -18,8 +18,9 @@ class GlacierModel(nn.Module):
 
 
 class Predictor(nn.Module):
-    def __init__(self, layers=None, input_dim=256, hidden_dim=256, n_layers=1, bi_direction=False, p=0.5):
+    def __init__(self, layers=None, **args):
         super(Predictor, self).__init__()
+        self.args = args
         if layers is None:
             raise ValueError("[ERROR] The layers cannot be empty")
         self.predictor = nn.Sequential(*layers)

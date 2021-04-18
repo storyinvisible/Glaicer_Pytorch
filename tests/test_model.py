@@ -13,19 +13,19 @@ from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset
 class PredictorModelTest(unittest.TestCase):
     def test_lstmModel(self):
         tensor = torch.randn(32, 256)
-        model = LSTMPredictor(input_dim=256, hidden_dim=256, n_layers=2, bi_direction=True, p=0.5)
+        model = LSTMPredictor(input_dim=256, hidden_dim=256, n_layers=2, bidirection=True, p=0.5)
         out = model(tensor)
         self.assertEqual(out.shape, (32, 1))
 
     def test_annModel(self):
         tensor = torch.randn(32, 256)
-        model = ANNPredictor(input_dim=256, hidden_dim=256, n_layers=2, bi_direction=True, p=0.5)
+        model = ANNPredictor(input_dim=256, hidden_dim=256, n_layers=2, bidirection=True, p=0.5)
         out = model(tensor)
         self.assertEqual(out.shape, (32, 1))
 
     def test_predictor(self):
         tensor = torch.randn(32, 256)
-        model = Predictor(input_dim=256, hidden_dim=256, n_layers=2, bi_direction=True, p=0.5, layers=[
+        model = Predictor(input_dim=256, hidden_dim=256, n_layers=2, bidirection=True, p=0.5, layers=[
             torch.nn.Linear(256, 256),
             torch.nn.ReLU(),
             torch.nn.Linear(256, 1)
@@ -84,7 +84,7 @@ class FeatureExtractorModelTest(unittest.TestCase):
 
     def test_hcnn_lstm(self):
         extra = VCNN(output_dim=256)
-        pred = LSTMPredictor(input_dim=256, hidden_dim=256, n_layers=2, bi_direction=True, p=0.5)
+        pred = LSTMPredictor(input_dim=256, hidden_dim=256, n_layers=2, bidirection=True, p=0.5)
         model = GlacierModel(extra=extra, pred=pred)
         for feature, s in self.loader:
             out = model(feature)

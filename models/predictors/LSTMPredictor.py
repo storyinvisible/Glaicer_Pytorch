@@ -3,10 +3,14 @@ import torch.nn as nn
 
 
 class LSTMPredictor(nn.Module):
-    def __init__(self, layers=None, input_dim=256, hidden_dim=256, n_layers=1, bi_direction=False, p=0.5):
+    def __init__(self, input_dim=256, hidden_dim=256, p=0.5, **args):
         super(LSTMPredictor, self).__init__()
-        self.lstm = nn.LSTM(input_size=input_dim, hidden_size=hidden_dim, bidirectional=bi_direction,
-                            num_layers=n_layers, batch_first=True)
+        assert "bidirection" in args
+        assert "n_layers" in args
+        self.args = args
+        self.lstm = nn.LSTM(input_size=input_dim, hidden_size=hidden_dim, batch_first=True,
+                            bidirectional=self.args["bidirection"],
+                            num_layers=self.args["n_layers"])
         self.activation = nn.LeakyReLU(0.2)
         self.dropout = nn.Dropout(p=p)
         self.output = nn.Linear(256, 1)
