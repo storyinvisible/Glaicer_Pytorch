@@ -1,7 +1,7 @@
 import torch
+from torch import nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-
 from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset
 from models import GlacierModel, ANNPredictor, LSTMPredictor, Predictor, HCNN, VCNN
 
@@ -15,12 +15,13 @@ def trainer(extractor, predictor, train_loader, test_loader, loss_func, optimize
     for epoch in range(epochs):
         train_loss = 0
         for feature, target in train_loader:
-            feature, target = Variable(feature).to(device), target.to(device)
+            feature, target = Variable(feature).to(device), Variable(target).to(device)
             step += 1
             pred = model(feature)
             loss = critic(pred.squeeze(1), target.float())
             optim.zero_grad()
             loss.backward(retain_graph=True)
+            nn.utils.clip_grad_norm_(model.parameters(), 0.1)
             optim.step()
             train_loss += loss.item()
             if step % print_every == 0:
@@ -45,10 +46,10 @@ if __name__ == '__main__':
     train_loader = DataLoader(dataset, batch_size=16)
     test_loader = train_loader
     trainer(HCNN(in_channel=5, output_dim=256, vertical_dim=289, device=device),
-            LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bi_direction=False, p=0.5,
-                          device=device),
-            device=device,
+            LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1,
+                          bi_direction=False, p=0.5),
             train_loader=train_loader, test_loader=test_loader,
             loss_func=torch.nn.MSELoss,
             optimizer=torch.optim.Adam,
-            epochs=500, lr=0.002, reg=0.001, save_every=10, print_every=10, save_path="saved_models/HCNN_LSTM_model.h5")
+            device=device, epochs=500, lr=0.002, reg=0.001, save_every=10, print_every=10,
+            save_path="saved_models/HCNN_LSTM_model.h5")
