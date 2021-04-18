@@ -4,6 +4,7 @@
 *backup*
 saved_models/
 logs/
+plots/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

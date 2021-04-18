@@ -4,16 +4,18 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset
 from models import GlacierModel, ANNPredictor, LSTMPredictor, Predictor, HCNN, VCNN
+from utils import plot_loss
 
 
 def trainer(extractor, predictor, train_loader, test_loader, loss_func, optimizer, epochs=500, lr=0.002, reg=0.001,
-            save_every=10, print_every=10, save_path=None, device=None):
+            save_every=10, print_every=10, save_path=None, show=False, device=None):
     model = GlacierModel(extractor, predictor).to(device)
     critic = loss_func()
     optim = optimizer(model.parameters(), lr=lr, weight_decay=reg)
     step = 0
+    train_loss, test_loss = [], []
     for epoch in range(epochs):
-        train_loss = 0
+        total_train_loss = 0
         for feature, target in train_loader:
             feature, target = Variable(feature).to(device), Variable(target).to(device)
             step += 1
@@ -23,20 +25,25 @@ def trainer(extractor, predictor, train_loader, test_loader, loss_func, optimize
             loss.backward(retain_graph=True)
             nn.utils.clip_grad_norm_(model.parameters(), 0.1)
             optim.step()
-            train_loss += loss.item()
+            total_train_loss += loss.item()
             if step % print_every == 0:
-                print("[INFO] Epoch {}|{}|{} Loss :{:.4f}".format(step, epoch, epochs, train_loss / print_every))
+                print("[INFO] Epoch {}|{}|{} Loss :{:.4f}".format(step, epoch, epochs, total_train_loss / print_every))
             if step % save_every == 0:
                 torch.save(model, save_path)
-        test_loss = 0
+        train_loss.append(total_train_loss / print_every)
+        total_test_loss = 0
+        step = 0
         with torch.no_grad():
             for feature, target in test_loader:
                 feature, target = feature.to(device), target.to(device)
                 pred = model(feature)
                 loss = critic(pred.squeeze(1), target.float().to(device))
-                test_loss += loss.item()
-        print("[INFO] Epoch {}|{} Loss :{:.4f}".format(epoch, epochs, train_loss / print_every))
-
+                total_test_loss += loss.item()
+                step += 1
+        print("[INFO] Epoch {}|{} Loss :{:.4f}".format(epoch, epochs, total_test_loss / step))
+    loss_plot = plot_loss(train_loss, test_loss, show=show)
+    loss_plot.savefig("plots/loss_plot.png")
+    loss_plot.close()
 
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -54,8 +61,8 @@ if __name__ == '__main__':
         torch.nn.ReLU(),
         torch.nn.Linear(256, 1)
     ])
-    trainer(vcnn_model, lstm_model, train_loader=train_loader, test_loader=test_loader,
-            device=device, epochs=500, lr=0.002, reg=0.001, save_every=10, print_every=10,
+    trainer(vcnn_model, lstm_model, train_loader=train_loader, test_loader=test_loader, show=False,
+            device=device, epochs=3, lr=0.002, reg=0.001, save_every=10, print_every=10,
             loss_func=torch.nn.MSELoss,
             optimizer=torch.optim.Adam,
             save_path="saved_models/HCNN_LSTM_model.h5")
