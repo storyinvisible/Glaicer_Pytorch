@@ -44,12 +44,18 @@ if __name__ == '__main__':
     data = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2002, path="ECMWF_reanalysis_data")
     dataset = GlacierDataset([data], [smb])
     train_loader = DataLoader(dataset, batch_size=16)
-    test_loader = train_loader
-    trainer(HCNN(in_channel=5, output_dim=256, vertical_dim=289, device=device),
-            LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1,
-                          bidirection=False, p=0.5),
-            train_loader=train_loader, test_loader=test_loader,
+    test_loader = DataLoader(dataset, batch_size=16)
+    vcnn_model = VCNN(in_channel=5, output_dim=256, vertical_dim=289)
+    hcnn_model = VCNN(in_channel=5, output_dim=256, vertical_dim=289)
+    lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
+    ann_model = ANNPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
+    predictor_model = Predictor(input_dim=256, hidden_dim=256, n_layers=2, bidirection=True, p=0.5, layers=[
+        torch.nn.Linear(256, 256),
+        torch.nn.ReLU(),
+        torch.nn.Linear(256, 1)
+    ])
+    trainer(vcnn_model, lstm_model, train_loader=train_loader, test_loader=test_loader,
+            device=device, epochs=500, lr=0.002, reg=0.001, save_every=10, print_every=10,
             loss_func=torch.nn.MSELoss,
             optimizer=torch.optim.Adam,
-            device=device, epochs=500, lr=0.002, reg=0.001, save_every=10, print_every=10,
             save_path="saved_models/HCNN_LSTM_model.h5")

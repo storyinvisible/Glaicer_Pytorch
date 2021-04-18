@@ -13,7 +13,10 @@ class LSTMPredictor(nn.Module):
                             num_layers=self.args["n_layers"])
         self.activation = nn.LeakyReLU(0.2)
         self.dropout = nn.Dropout(p=p)
-        self.output = nn.Linear(256, 1)
+        if self.args["bidirection"]:
+            self.output = nn.Linear(hidden_dim * 2, 1)
+        else:
+            self.output = nn.Linear(hidden_dim, 1)
 
     def forward(self, x):
         x = torch.unsqueeze(x, 1)
@@ -21,4 +24,5 @@ class LSTMPredictor(nn.Module):
         x = self.activation(x)
         x = self.dropout(x)
         x = nn.Flatten()(x)
-        return self.output(x)
+        out = self.output(x)
+        return out
