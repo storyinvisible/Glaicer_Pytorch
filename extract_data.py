@@ -6,7 +6,7 @@ import os
 
 def extract_data(name):
     # get all types of data
-    file_obj = nc.Dataset("new_era5_data/new_era5_data.nc")  # ['longitude', 'latitude', 'expver', 'time', 'u10', 'v10', 'd2m', 't2m', 'msl', 'mwd', 'sst', 'sp', 'tp']
+    file_obj = nc.Dataset("./new_era5_data.nc")  # ['longitude', 'latitude', 'expver', 'time', 'u10', 'v10', 'd2m', 't2m', 'msl', 'mwd', 'sst', 'sp', 'tp']
     k = file_obj.variables.keys()
     temperature = file_obj.variables['t2m'][:]
     pressure = file_obj.variables['sp'][:]
@@ -144,6 +144,11 @@ def haversine(lon1, lat1, lon2, lat2):
 # padding data to fixed shape
 def data_padding(data):
     fixed_matrix = np.zeros((15, 64), dtype=np.float64)
-    fixed_matrix[0:data.shape[0], 0:data.shape[1]] = data
+    x_data, y_data = data.shape[0], data.shape[1]
+    x_lower = 15//2 - x_data//2
+    x_upper = 15//2 + x_data//2
+    y_lower = 64//2 - y_data//2
+    y_upper = 64//2 + y_data//2
+    fixed_matrix[x_lower:x_upper, y_lower:y_upper] = data
     res = np.expand_dims(fixed_matrix, 0)
     return res

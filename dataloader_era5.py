@@ -14,7 +14,7 @@ class ERA5Dataset(Dataset):
         self.end_year = end_year
         self.glacier_name = glacier_name
         start_indx, end_idx = self.get_index_year()
-        self.ERA5Data = [data[start_indx:end_idx+1] for data in [extract_data(glacier_name)]]
+        self.ERA5Data = [data[start_indx:end_idx+1] for data in extract_data(glacier_name)]
 
     
     def get_index_year(self):
@@ -28,5 +28,5 @@ class ERA5Dataset(Dataset):
         return self.end_year-self.start+1 
 
     def __getitem__(self, index):
-        return (data[index] for data in self.ERA5Data)
-        
+        x1, x2, x3, x4, x5, x6, x7 = [data[index] for data in self.ERA5Data]
+        return x1, x2, x3, x4, x5, x6, x7
