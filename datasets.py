@@ -126,12 +126,13 @@ class ERA5Datasets(Dataset):
 class Glacier_dmdt(Dataset):
     def __init__(self, glacier, start_year, end_year, path="glaicer_dmdt.csv"):
         super(Glacier_dmdt, self).__init__()
+        self.df = pd.read_csv(path)
         if start_year > end_year:
             end_year, start_year = start_year, end_year
         self.glacier = glacier
         self.start_year = start_year
         self.end_year = end_year
-        self.df = pd.read_csv(path)
+
         self.index_dict, self.new_df = self.get_index_dict()
 
     def get_index_dict(self):
@@ -152,3 +153,21 @@ class Glacier_dmdt(Dataset):
 
     def __getitem__(self, index):
         return float(self.new_df[self.index_dict[index]])
+def clean_glaicer_select(glacier_path="glaicer_dmdt.csv",glacier_path2="Glacier_select.csv"):
+    df_1=pd.read_csv(glacier_path)
+    df_2=pd.read_csv(glacier_path2)
+    cond_1= df_1["ALL_same"]=="FALSE"
+    df2_filter=df_2[cond_1]
+    df_1_year=df_1[["NAME","Years"]][cond_1]
+    df_1_year=df_1_year.set_index(df_1_year["NAME"])
+    df_1_year=df_1_year.drop(columns=["NAME"])
+
+    df2_filter=df2_filter.set_index(df2_filter["NAME"])
+    df2_filter=df2_filter.drop(columns=["NAME"])
+    print(df2_filter)
+    print(df_1_year)
+    df2_filter=pd.concat([df2_filter, df_1_year], axis=1)
+    df2_filter.to_csv(glacier_path2)
+    return df2_filter
+print(clean_glaicer_select())
+glacier=Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
