@@ -4,8 +4,8 @@ from torch import nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset
-from models import GlacierModel, ANNPredictor, LSTMPredictor, Predictor, HCNN, VCNN
-from utils import plot_loss, plot_smb
+from models import GlacierModel, LSTMPredictor, VCNN
+from utils import plot_loss
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -43,7 +43,8 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                 test_losses.append(test_loss)
                 mean_loss = total_train_loss / eval_every
                 train_losses.append(mean_loss)
-                print("[INFO] Epoch {}|{} {} Loss: {:.4f} Eval: {:.4f}".format(epoch, epochs, step, mean_loss, test_loss))
+                print(
+                    "[INFO] Epoch {}|{} {} Loss: {:.4f} Eval: {:.4f}".format(epoch, epochs, step, mean_loss, test_loss))
                 loss_plot = plot_loss(train_losses, test_losses, show=show)
                 loss_plot.savefig("plots/{}_loss_plot.png".format(model.name))
                 loss_plot.close()
@@ -103,16 +104,16 @@ if __name__ == '__main__':
     # DAUGAARD_smb = Glacier_dmdt("DAUGAARD-JENSEN", 1980, 2002, path="glaicer_dmdt.csv")
     # DAUGAARD_data = ERA5Datasets("DAUGAARD-JENSEN", 1980, 2002, path="ECMWF_reanalysis_data")
     glacier_dataset = GlacierDataset([JAKOBSHAVN_data], [JAKOBSHAVN_smb])
-    train_loader = DataLoader(glacier_dataset, batch_size=16, shuffle=True)
+    loader = DataLoader(glacier_dataset, batch_size=16, shuffle=True)
 
     # construct the model
     vcnn_model = VCNN(in_channel=5, output_dim=256, vertical_dim=289)
     lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
-    model = GlacierModel(vcnn_model, lstm_model, name="vcnnLSTM")
+    glacier_model = GlacierModel(vcnn_model, lstm_model, name="vcnnLSTM")
 
     # train model
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loss_function = torch.nn.MSELoss()
-    trainer(model, train_loader=train_loader, testdataset=JAKOBSHAVN_data, testsmb=JAKOBSHAVN_smb, show=False,
-            device=device, epochs=3, lr=0.002, reg=0.001, save_every=10, eval_every=1, test_split_at=15,
+    trainer(glacier_model, train_loader=loader, testdataset=JAKOBSHAVN_data, testsmb=JAKOBSHAVN_smb, show=False,
+            device=cuda, epochs=3, lr=0.002, reg=0.001, save_every=10, eval_every=1, test_split_at=15,
             critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")

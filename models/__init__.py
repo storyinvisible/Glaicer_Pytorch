@@ -1,47 +1,39 @@
+import torch
 import torch.nn as nn
 from models.predictors.ANNPredictor import ANNPredictor
 from models.predictors.LSTMPredictor import LSTMPredictor
 from models.extractor.hcnn import HCNN
 from models.extractor.vcnn import VCNN
-from copy import deepcopy
-import torch
+from models.extractor.tcnn import TCNN
+from models.extractor.hinverted import HInvertedBlock, HInvertedResidual
+from models.extractor.vinverted import VInvertedBlock, VInvertedResidual
+
+
 class GlacierModel(nn.Module):
-    def __init__(self, extra, pred):
+    def __init__(self, extra, pred, name):
         super(GlacierModel, self).__init__()
         self.extra = extra
         self.pred = pred
+        self.name = name
 
     def forward(self, x):
         out = self.extra(x)
         out = self.pred(out)
         return out
 
-class GlacierModel2(nn.Module):
-    def __init__(self, extra, pred):
-        super(GlacierModel2, self).__init__()
-        self.extra1 = extra
-        self.extra2 = deepcopy(extra)
-        self.extra3 = deepcopy(extra)
-        self.extra4 = deepcopy(extra)
-        self.extra5 = deepcopy(extra) # the five features needed
-        self.pred = pred
+
+class FlattenInputForSeparateModel(nn.Module):
+    def __init__(self, concate=False):
+        super(FlattenInputForSeparateModel, self).__init__()
+        self.concat = concate
 
     def forward(self, x):
-        x1 = torch.unsqueeze(x[:,0,:,:],0)
-        x2 = torch.unsqueeze(x[:, 1, :, :], 0)
-        x3 = torch.unsqueeze(x[:, 2, :, :], 0)
-        x4 = torch.unsqueeze(x[:, 3, :, :], 0)
-        x5 = torch.unsqueeze(x[:, 4, :, :], 0)
-        out1=self.extra1(x1)
-        out2 = self.extra2(x2)
-        out3 = self.extra3(x3)
-        out4 = self.extra4(x4)
-        out5 = self.extra5(x5)
-
-        out = torch.cat((out1,out2,out3,out4,out5), dim=1)
-        print(out.shape)
-        out = self.pred(out)
+        out = [torch.unsqueeze(x[:, i, :, :], 1) for i in range(x.shape[1])]
+        if self.concat:
+            return torch.cat(out, dim=3)
         return out
+
+
 class Predictor(nn.Module):
     def __init__(self, layers=None, **args):
         super(Predictor, self).__init__()

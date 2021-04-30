@@ -7,6 +7,7 @@ from os.path import join
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
+
 class GlacierDataset(Dataset):
     def __init__(self, ERA5Data, dmdtData):
         if not isinstance(ERA5Data, list):
@@ -176,7 +177,7 @@ class NewGlacierDataset(Dataset):
         if self.end_year < 1972 or self.end_year > 2018:
             raise ValueError(f"End year does not exist: {self.end_year}")
         return self.start_year - 1971, self.end_year - 1972
-    
+
     def get_index_dict(self):
         new_df = self.df[self.df["NAME"] == self.glacier_name]
         index_dict = []
@@ -364,5 +365,3 @@ def data_padding(data):
     fixed_matrix[0:data.shape[0], 0:data.shape[1]] = data
     res = np.expand_dims(fixed_matrix, 0)
     return res
-
-
