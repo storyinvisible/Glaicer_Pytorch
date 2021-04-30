@@ -366,6 +366,3 @@ def data_padding(data):
     return res
 
 
-if __name__ == '__main__':
-    # print(clean_glaicer_select())
-    data = NewGlacierDataset("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
