@@ -59,3 +59,5 @@ class HCNN2(nn.Module):
             nn.Conv2d(in_channels = 256, out_channels = output_dim, kernel_size = (1, 3), stride = (1, 1)),
             nn.Flatten(),
         )
+    def forwad(self, x):
+        return self.model(x)
