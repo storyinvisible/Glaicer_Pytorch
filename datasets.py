@@ -340,7 +340,13 @@ def extract_data(name):
                                                    data_padding(dew_point_temperature_data_temp), axis=0)
             ocean_data = np.append(ocean_data, data_padding(ocean_data_temp), axis=0)
         break
-    return temperature_data.reshape(-1, 12, 15,64), wind_data.reshape(-1, 12, 15,64), pressure_data.reshape(-1, 12, 15,64), precipitation_data.reshape(-1, 12, 15,64), cloudcover_data.reshape(-1, 12, 15,64), dew_point_temperature_data.reshape(-1, 12, 15,64), ocean_data.reshape(-1, 12, 15,64)
+    return temperature_data.reshape(-1, 12, 15, 64), \
+           wind_data.reshape(-1, 12, 15, 64), \
+           pressure_data.reshape(-1, 12, 15, 64), \
+           precipitation_data.reshape(-1, 12, 15, 64), \
+           cloudcover_data.reshape(-1, 12, 15, 64), \
+           dew_point_temperature_data.reshape(-1, 12, 15, 64), \
+           ocean_data.reshape(-1, 12, 15, 64)
 
 
 def haversine(lon1, lat1, lon2, lat2):

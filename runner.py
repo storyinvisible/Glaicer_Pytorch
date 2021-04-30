@@ -21,7 +21,8 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
         total_train_loss = 0
         count = 0
         for feature, target in train_loader:
-            feature, target = Variable(feature).to(device), Variable(target).to(device)
+            feature, target = Variable(feature.type(torch.FloatTensor)).to(device), Variable(
+                target.type(torch.FloatTensor)).to(device)
             pred = model(feature)
             loss = critic(pred.squeeze(1), target.float())
             optim.zero_grad()
