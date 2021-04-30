@@ -195,7 +195,7 @@ class NewGlacierDataset(Dataset):
         return self.end_year - self.start_year + 1
 
     def __getitem__(self, index):
-        x = [data[index].tolist() for data in self.ERA5Data]
+        x = np.array([data[index] for data in self.ERA5Data])
         return x, float(self.new_df[self.index_dict[index]])
 
 
@@ -340,7 +340,7 @@ def extract_data(name):
                                                    data_padding(dew_point_temperature_data_temp), axis=0)
             ocean_data = np.append(ocean_data, data_padding(ocean_data_temp), axis=0)
         break
-    return temperature_data, wind_data, pressure_data, precipitation_data, cloudcover_data, dew_point_temperature_data, ocean_data
+    return temperature_data.reshape(-1, 12, 15,64), wind_data.reshape(-1, 12, 15,64), pressure_data.reshape(-1, 12, 15,64), precipitation_data.reshape(-1, 12, 15,64), cloudcover_data.reshape(-1, 12, 15,64), dew_point_temperature_data.reshape(-1, 12, 15,64), ocean_data.reshape(-1, 12, 15,64)
 
 
 def haversine(lon1, lat1, lon2, lat2):
