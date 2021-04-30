@@ -5,6 +5,7 @@ import pandas as pd
 import netCDF4 as nc
 from os.path import join
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 class GlacierDataset(Dataset):
     def __init__(self, ERA5Data, dmdtData):
@@ -193,8 +194,8 @@ class NewGlacierDataset(Dataset):
         return self.end_year - self.start_year + 1
 
     def __getitem__(self, index):
-        x1, x2, x3, x4, x5, x6, x7 = [data[index] for data in self.ERA5Data]
-        return x1, x2, x3, x4, x5, x6, x7, float(self.new_df[self.index_dict[index]])
+        x = [data[index].tolist() for data in self.ERA5Data]
+        return x, float(self.new_df[self.index_dict[index]])
 
 
 # TODO please fix error line: cond_1 = df_1["ALL_same"] == "FALSE" raise KeyError(key) from err KeyError: 'ALL_same'
@@ -274,9 +275,9 @@ def extract_data(name):
                     up2 = min(up2, i)
                     down2 = max(down2, i)
         # from every month
-        for tt in range(4, len(times) - 35):
+        print("Get data...")
+        for tt in tqdm(range(4, len(times) - 35)):
             # get data
-            print("data in ", times[tt])
             ocean_data_temp = []
             temperature_data_temp = []
             wind_data_temp = []
@@ -365,6 +366,3 @@ def data_padding(data):
     return res
 
 
-if __name__ == '__main__':
-    # print(clean_glaicer_select())
-    data = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
