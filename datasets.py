@@ -6,7 +6,6 @@ import netCDF4 as nc
 from os.path import join
 from torch.utils.data import Dataset
 
-
 class GlacierDataset(Dataset):
     def __init__(self, ERA5Data, dmdtData):
         if not isinstance(ERA5Data, list):
@@ -157,30 +156,45 @@ class Glacier_dmdt(Dataset):
         return float(self.new_df[self.index_dict[index]])
 
 
-class ERA5Dataset(Dataset):
+class NewGlacierDataset(Dataset):
     def __init__(self, glacier_name, start_year, end_year, path="glaicer_dmdt.csv"):
-        super(ERA5Dataset, self).__init__()
+        super(NewGlacierDataset, self).__init__()
         if start_year > end_year:
             start_year, end_year = end_year, start_year
         self.start_year = start_year
         self.end_year = end_year
         self.glacier_name = glacier_name
+        self.df = pd.read_csv(path)
         start_indx, end_idx = self.get_index_year()
+        self.index_dict, self.new_df = self.get_index_dict()
         self.ERA5Data = [data[start_indx:end_idx + 1] for data in extract_data(glacier_name)]
 
     def get_index_year(self):
-        if self.start_year < 1971 or self.start_year > 2019:
+        if self.start_year < 1971 or self.start_year > 2017:
             raise ValueError(f"Start year does not exist: {self.start_year}")
-        if self.end_year < 1971 or self.end_year > 2019:
+        if self.end_year < 1972 or self.end_year > 2018:
             raise ValueError(f"End year does not exist: {self.end_year}")
-        return self.start_year - 1971, self.end_year - 1971
+        return self.start_year - 1971, self.end_year - 1972
+    
+    def get_index_dict(self):
+        new_df = self.df[self.df["NAME"] == self.glacier_name]
+        index_dict = []
+        start = False
+        for year in self.df.columns:
+            if start:
+                index_dict.append(year)
+            if str(self.start_year) in year:
+                start = True
+            if str(self.end_year) in year:
+                break
+        return index_dict, new_df
 
     def __len__(self):
         return self.end_year - self.start_year + 1
 
     def __getitem__(self, index):
         x1, x2, x3, x4, x5, x6, x7 = [data[index] for data in self.ERA5Data]
-        return x1, x2, x3, x4, x5, x6, x7
+        return x1, x2, x3, x4, x5, x6, x7, float(self.new_df[self.index_dict[index]])
 
 
 # TODO please fix error line: cond_1 = df_1["ALL_same"] == "FALSE" raise KeyError(key) from err KeyError: 'ALL_same'
@@ -260,7 +274,7 @@ def extract_data(name):
                     up2 = min(up2, i)
                     down2 = max(down2, i)
         # from every month
-        for tt in range(len(times) - 15):
+        for tt in range(4, len(times) - 35):
             # get data
             print("data in ", times[tt])
             ocean_data_temp = []
@@ -346,16 +360,11 @@ def haversine(lon1, lat1, lon2, lat2):
 # padding data to fixed shape
 def data_padding(data):
     fixed_matrix = np.zeros((15, 64), dtype=np.float64)
-    x_data, y_data = data.shape[0], data.shape[1]
-    x_lower = 15 // 2 - x_data // 2
-    x_upper = 15 // 2 + x_data // 2
-    y_lower = 64 // 2 - y_data // 2
-    y_upper = 64 // 2 + y_data // 2
-    fixed_matrix[x_lower:x_upper, y_lower:y_upper] = data
+    fixed_matrix[0:data.shape[0], 0:data.shape[1]] = data
     res = np.expand_dims(fixed_matrix, 0)
     return res
 
 
 if __name__ == '__main__':
-    print(clean_glaicer_select())
-    glacier = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
+    # print(clean_glaicer_select())
+    data = ERA5Dataset("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
