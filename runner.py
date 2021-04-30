@@ -4,18 +4,20 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset
 from models import GlacierModel, ANNPredictor, LSTMPredictor, Predictor, HCNN, VCNN
-from utils import plot_loss,plot_actual
+from utils import plot_loss, plot_actual
 import numpy as np
 
-def trainer(extractor, predictor, train_loader, test_loader,dataset, loss_func, optimizer, epochs=500, lr=0.002, reg=0.001,
+
+def trainer(extractor, predictor, train_loader, test_loader, dataset, loss_func, optimizer, epochs=500, lr=0.002,
+            reg=0.001,
             save_every=10, print_every=10, save_path=None, show=False, device=None):
     model = GlacierModel(extractor, predictor).to(device)
     critic = loss_func()
     optim = optimizer(model.parameters(), lr=lr, weight_decay=reg)
     step = 0
     train_loss, test_loss = [], []
-    pred_train=None
-    pred_test=None
+    pred_train = None
+    pred_test = None
     for epoch in range(epochs):
         pred_train = None
         pred_test = None
@@ -25,9 +27,9 @@ def trainer(extractor, predictor, train_loader, test_loader,dataset, loss_func, 
             step += 1
             pred = model(feature)
             if pred_train is None:
-                pred_train=pred.cpu().detach().numpy()[0]
+                pred_train = pred.cpu().detach().numpy()[0]
             else:
-                pred_train=np.append(pred_train,pred.cpu().detach().numpy()[0])
+                pred_train = np.append(pred_train, pred.cpu().detach().numpy()[0])
             loss = critic(pred.squeeze(1), target.float())
             optim.zero_grad()
             loss.backward(retain_graph=True)
@@ -47,7 +49,7 @@ def trainer(extractor, predictor, train_loader, test_loader,dataset, loss_func, 
                 pred = model(feature)
                 loss = critic(pred.squeeze(1), target.float().to(device))
                 if pred_test is None:
-                    pred_test=pred.cpu().detach().numpy()[0]
+                    pred_test = pred.cpu().detach().numpy()[0]
                 else:
                     pred_test = np.append(pred_test, pred.cpu().detach().numpy()[0])
                 total_test_loss += loss.item()
@@ -56,9 +58,10 @@ def trainer(extractor, predictor, train_loader, test_loader,dataset, loss_func, 
     loss_plot = plot_loss(train_loss, test_loss, show=show)
     loss_plot.savefig("Plot/loss_plot.png")
     loss_plot.close()
-    act_plt=plot_actual(smb,pred_train,pred_test)
+    act_plt = plot_actual(smb, pred_train, pred_test)
     act_plt.savefig("Plot/actual_plot.png")
     act_plt.close()
+
 
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -76,7 +79,7 @@ if __name__ == '__main__':
         torch.nn.ReLU(),
         torch.nn.Linear(256, 1)
     ])
-    trainer(vcnn_model, lstm_model, train_loader=train_loader, test_loader=test_loader,dataset=smb, show=False,
+    trainer(vcnn_model, lstm_model, train_loader=train_loader, test_loader=test_loader, dataset=smb, show=False,
             device=device, epochs=3, lr=0.002, reg=0.001, save_every=10, print_every=10,
             loss_func=torch.nn.MSELoss,
             optimizer=torch.optim.Adam,
