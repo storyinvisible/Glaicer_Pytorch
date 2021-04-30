@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset
+from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset, NewGlacierDataset
 from models import GlacierModel, ANNPredictor, LSTMPredictor, Predictor, HCNN, VCNN
 from utils import plot_loss, plot_actual
 import numpy as np
@@ -23,7 +23,7 @@ def trainer(extractor, predictor, train_loader, test_loader, dataset, loss_func,
         pred_test = None
         total_train_loss = 0
         for feature, target in train_loader:
-            feature, target = Variable(feature).to(device), Variable(target).to(device)
+            feature, target = Variable(torch.unsqueeze(torch.DoubleTensor(feature), 0)).to(device), Variable(torch.unsqueeze(torch.DoubleTensor(target), 0)).to(device)
             step += 1
             pred = model(feature)
             if pred_train is None:
@@ -65,9 +65,10 @@ def trainer(extractor, predictor, train_loader, test_loader, dataset, loss_func,
 
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    smb = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
-    data = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2002, path="ECMWF_reanalysis_data")
-    dataset = GlacierDataset([data], [smb])
+    smb = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glacier_dmdt.csv")
+    # data = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2002, path="ECMWF_reanalysis_data")
+    # dataset = GlacierDataset([data], [smb])
+    dataset = NewGlacierDataset("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glacier_dmdt.csv")
     train_loader = DataLoader(dataset, batch_size=1)
     test_loader = DataLoader(dataset, batch_size=1)
     vcnn_model = VCNN(in_channel=5, output_dim=256, vertical_dim=289)
