@@ -367,4 +367,4 @@ def data_padding(data):
 
 if __name__ == '__main__':
     # print(clean_glaicer_select())
-    data = ERA5Dataset("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
+    data = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
