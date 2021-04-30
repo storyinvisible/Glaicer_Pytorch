@@ -3,8 +3,8 @@ from torch import nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset, NewGlacierDataset
-from models import GlacierModel, ANNPredictor, LSTMPredictor, Predictor, HCNN, VCNN
-from utils import plot_loss, plot_actual
+from models import GlacierModel, ANNPredictor, LSTMPredictor, Predictor, HCNN, VCNN, TCNN
+from utils import plot_loss, plot_smb
 import numpy as np
 
 
@@ -58,7 +58,7 @@ def trainer(extractor, predictor, train_loader, test_loader, dataset, loss_func,
     loss_plot = plot_loss(train_loss, test_loss, show=show)
     loss_plot.savefig("Plot/loss_plot.png")
     loss_plot.close()
-    act_plt = plot_actual(smb, pred_train, pred_test)
+    act_plt = plot_smb(smb, pred_train, pred_test)
     act_plt.savefig("Plot/actual_plot.png")
     act_plt.close()
 
@@ -73,6 +73,7 @@ if __name__ == '__main__':
     test_loader = DataLoader(dataset, batch_size=1)
     vcnn_model = VCNN(in_channel=5, output_dim=256, vertical_dim=289)
     hcnn_model = VCNN(in_channel=5, output_dim=256, vertical_dim=289)
+    tcnn_model = TCNN()
     lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
     ann_model = ANNPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
     predictor_model = Predictor(input_dim=256, hidden_dim=256, n_layers=2, bidirection=True, p=0.5, layers=[
@@ -80,8 +81,8 @@ if __name__ == '__main__':
         torch.nn.ReLU(),
         torch.nn.Linear(256, 1)
     ])
-    trainer(vcnn_model, lstm_model, train_loader=train_loader, test_loader=test_loader, dataset=smb, show=False,
+    trainer(tcnn_model, lstm_model, train_loader=train_loader, test_loader=test_loader, dataset=smb, show=False,
             device=device, epochs=3, lr=0.002, reg=0.001, save_every=10, print_every=10,
             loss_func=torch.nn.MSELoss,
             optimizer=torch.optim.Adam,
-            save_path="saved_models/HCNN_LSTM_model.h5")
+            save_path="saved_models/TCNN_LSTM_model.h5")

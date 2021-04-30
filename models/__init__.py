@@ -3,6 +3,7 @@ from models.predictors.ANNPredictor import ANNPredictor
 from models.predictors.LSTMPredictor import LSTMPredictor
 from models.extractor.hcnn import HCNN
 from models.extractor.vcnn import VCNN
+from models.extractor.tcnn import TCNN
 from copy import deepcopy
 import torch
 class GlacierModel(nn.Module):
