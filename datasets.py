@@ -169,5 +169,5 @@ def clean_glaicer_select(glacier_path="glaicer_dmdt.csv",glacier_path2="Glacier_
     df2_filter=pd.concat([df2_filter, df_1_year], axis=1)
     df2_filter.to_csv(glacier_path2)
     return df2_filter
-print(clean_glaicer_select())
-glacier=Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
+# print(clean_glaicer_select())
+# glacier=Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
