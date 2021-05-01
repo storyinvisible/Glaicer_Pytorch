@@ -51,15 +51,14 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                     mean_loss = total_train_loss / eval_every / train_loader.batch_size
                     train_losses.append(mean_loss)
                     prediction_plot.savefig(
-                        "{}/{}_{}_pred_and_actual-{}_{}_{}.png".format(os.path.join(base_path, "plots"), model.name,
-                                                                       testdataset.glacier, epoch,
-                                                                       loss.item() / train_loader.batch_size,
-                                                                       test_loss))
+                        "{}/comp-{}_{:.4f}_{:.4f}.png".format(os.path.join(base_path, "plots"), epoch,
+                                                              loss.item() / train_loader.batch_size,
+                                                              test_loss))
                     prediction_plot.close()
                     print("[INFO] Epoch {}|{} {} Loss: {:.4f} Eval: {:.4f}".format(epoch, epochs, step, mean_loss,
                                                                                    test_loss))
                     loss_plot = plot_loss(train_losses, test_losses, show=show)
-                    loss_plot.savefig("{}/{}_loss_plot.png".format(os.path.join(base_path, "plots"), model.name))
+                    loss_plot.savefig("{}/{}_loss.png".format(os.path.join(base_path, "plots"), model.name))
                     loss_plot.close()
     except KeyboardInterrupt:
         print("[INFO] Starting to exit!")
@@ -68,15 +67,15 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
         torch.save(model, os.path.join(base_path, "{}_model.h5".format(model.name)))
         # loss plot
         loss_plot = plot_loss(train_losses, test_losses, show=show)
-        loss_plot.savefig("{}/{}_loss_plot.png".format(os.path.join(base_path, "plots"), model.name))
+        loss_plot.savefig("{}/{}_loss.png".format(os.path.join(base_path, "plots"), model.name))
         loss_plot.close()
         # loss record
         pd.DataFrame({"train_loss": train_losses, "eval_loss": test_losses}).to_csv(os.path.join(base_path, "loss.csv"))
         # Final evaluation
         prediction_plot, predicted, actual = evaluate(model, testdataset, testsmb, split_at=test_split_at,
                                                       device=device)
-        prediction_plot.savefig("{}/{}_{}_pred_and_actual.png".format(os.path.join(base_path, "plots"), model.name,
-                                                                      testdataset.glacier))
+        prediction_plot.savefig("{}/{}_{}_comp.png".format(os.path.join(base_path, "plots"), model.name,
+                                                           testdataset.glacier))
         prediction_plot.close()
 
 
@@ -126,17 +125,22 @@ if __name__ == '__main__':
     JAKOBSHAVN_data = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2010, path="ECMWF_reanalysis_data")
     JAKOBSHAVN_smb_test = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2018, path="glacier_dmdt.csv")
     JAKOBSHAVN_data_test = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2018, path="ECMWF_reanalysis_data")
-    # QAJUUTTAP_SERMIA_smb = Glacier_dmdt("QAJUUTTAP_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
-    # QAJUUTTAP_SERMIA_data = ERA5Datasets("QAJUUTTAP_ISBRAE", 1980, 2002, path="ECMWF_reanalysis_data")
+    # QAJUUTTAP_SERMIA_smb = Glacier_dmdt("QAJUUTTAP_SERMIA", 1980, 2002, path="glaicer_dmdt.csv")
+    QAJUUTTAP_SERMIA_data = ERA5Datasets("QAJUUTTAP_SERMIA", 1980, 2002, path="ECMWF_reanalysis_data")
     # STORSTROMMEN_smb = Glacier_dmdt("STORSTROMMEN", 1980, 2002, path="glaicer_dmdt.csv")
-    # STORSTROMMEN_data = ERA5Datasets("STORSTROMMEN", 1980, 2002, path="ECMWF_reanalysis_data")
+    STORSTROMMEN_data = ERA5Datasets("STORSTROMMEN", 1980, 2002, path="ECMWF_reanalysis_data")
     # HELHEIMGLETSCHER_smb = Glacier_dmdt("HELHEIMGLETSCHER", 1980, 2002, path="glaicer_dmdt.csv")
-    # HELHEIMGLETSCHER_data = ERA5Datasets("HELHEIMGLETSCHER", 1980, 2002, path="ECMWF_reanalysis_data")
+    HELHEIMGLETSCHER_data = ERA5Datasets("HELHEIMGLETSCHER", 1980, 2002, path="ECMWF_reanalysis_data")
     # DAUGAARD_smb = Glacier_dmdt("DAUGAARD-JENSEN", 1980, 2002, path="glaicer_dmdt.csv")
-    # DAUGAARD_data = ERA5Datasets("DAUGAARD-JENSEN", 1980, 2002, path="ECMWF_reanalysis_data")
+    DAUGAARD_data = ERA5Datasets("DAUGAARD-JENSEN", 1980, 2002, path="ECMWF_reanalysis_data")
     glacier_dataset = GlacierDataset([JAKOBSHAVN_data], [JAKOBSHAVN_smb])
-    loader = DataLoader(glacier_dataset, batch_size=16, shuffle=True)
-
+    loader = DataLoader(glacier_dataset, batch_size=16, shuffle=False)
+    """
+    QAJ torch.Size([5, 14, 12])
+    STO torch.Size([5, 326, 12])
+    HEL torch.Size([5, 167, 12])
+    DAU torch.Size([5, 210, 12])
+    """
     # construct the model
     # vcnn_model = VCNN(in_channel=5, output_dim=256, vertical_dim=289)
     lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
