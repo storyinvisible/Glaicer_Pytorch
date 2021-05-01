@@ -24,16 +24,17 @@ class TCNN(nn.Module):
     def __init__(self, in_channel=7, output_dim=256, **args):
         super(TCNN, self).__init__()
         self.args = args
+        self.output_dim = output_dim
         self.model = nn.Sequential(
-            nn.Conv3d(in_channels=in_channel, out_channels=32, kernel_size=(1, 3, 7), stride=(1, 1, 3), padding=(0, 0)),
+            nn.Conv3d(in_channels=in_channel, out_channels=32, kernel_size=(1, 3, 7), stride=(1, 1, 3), padding=0),
             nn.LeakyReLU(0.2),
-            nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(2, 3, 3), stride=(2, 1, 1), padding=(0, 0)),
+            nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(2, 3, 3), stride=(2, 1, 1), padding=0),
             nn.LeakyReLU(0.2),
-            nn.Conv3d(in_channels=64, out_channels=128, kernel_size=(2, 3, 3), stride=(2, 1, 1), padding=(0, 0)),
+            nn.Conv3d(in_channels=64, out_channels=128, kernel_size=(2, 3, 3), stride=(2, 1, 1), padding=0),
             nn.LeakyReLU(0.2),
-            nn.Conv3d(in_channels=128, out_channels=256, kernel_size=(3, 3, 4), stride=(1, 3, 4), padding=(0, 0)),
+            nn.Conv3d(in_channels=128, out_channels=256, kernel_size=(3, 3, 4), stride=(1, 3, 4), padding=0),
             nn.LeakyReLU(0.2),
-            nn.Conv3d(in_channels=256, out_channels=output_dim, kernel_size=(1, 3, 4), stride=(1, 1), padding=(0, 0)),
+            nn.Conv3d(in_channels=256, out_channels=output_dim, kernel_size=(1, 3, 4), stride=(1, 1), padding=0),
             nn.LeakyReLU(0.2),
             nn.Flatten(),
         )

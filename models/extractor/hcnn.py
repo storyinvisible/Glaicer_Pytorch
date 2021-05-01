@@ -15,6 +15,7 @@ class HCNN(nn.Module):
         super(HCNN, self).__init__()
         assert "vertical_dim" in args
         self.args = args
+        self.output_dim = output_dim
         self.model = nn.Sequential(
             nn.Conv2d(in_channels=in_channel, out_channels=16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
             nn.LeakyReLU(0.2),

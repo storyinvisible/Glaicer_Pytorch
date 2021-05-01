@@ -4,7 +4,7 @@ from torch import nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset
-from models import GlacierModel, LSTMPredictor, VCNN
+from models import GlacierModel, LSTMPredictor, VCNN, SeparateFeatureExtractor
 from utils import plot_loss
 import numpy as np
 import matplotlib.pyplot as plt
@@ -93,8 +93,7 @@ def evaluate(model, dataset, target, split_at=None, device=None):
 
 if __name__ == '__main__':
     # set dataset
-    # TODO please add the padded dataset
-    JAKOBSHAVN_smb = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
+    JAKOBSHAVN_smb = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glacier_dmdt.csv")
     JAKOBSHAVN_data = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2002, path="ECMWF_reanalysis_data")
     # QAJUUTTAP_SERMIA_smb = Glacier_dmdt("QAJUUTTAP_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
     # QAJUUTTAP_SERMIA_data = ERA5Datasets("QAJUUTTAP_ISBRAE", 1980, 2002, path="ECMWF_reanalysis_data")
@@ -108,9 +107,17 @@ if __name__ == '__main__':
     loader = DataLoader(glacier_dataset, batch_size=16, shuffle=True)
 
     # construct the model
-    vcnn_model = VCNN(in_channel=5, output_dim=256, vertical_dim=289)
+    # vcnn_model = VCNN(in_channel=5, output_dim=256, vertical_dim=289)
     lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
-    glacier_model = GlacierModel(vcnn_model, lstm_model, name="vcnnLSTM")
+    extractor = SeparateFeatureExtractor(output_dim=256, layers=[
+        VCNN(in_channel=1, output_dim=256, vertical_dim=289),
+        VCNN(in_channel=1, output_dim=256, vertical_dim=289),
+        VCNN(in_channel=1, output_dim=256, vertical_dim=289),
+        VCNN(in_channel=1, output_dim=256, vertical_dim=289),
+        VCNN(in_channel=1, output_dim=256, vertical_dim=289),
+    ])
+
+    glacier_model = GlacierModel(extractor, lstm_model, name="separateVCNNLSTM")
 
     # train model
     cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")

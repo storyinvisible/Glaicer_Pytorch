@@ -17,6 +17,7 @@ class HInvertedResidual(nn.Module):
     def __init__(self, in_channel=5, output_dim=256, **args):
         super(HInvertedResidual, self).__init__()
         self.args = args
+        self.output_dim = output_dim
         self.model = nn.Sequential(
             nn.Conv2d(in_channels=in_channel, out_channels=16, kernel_size=(17, 12), stride=(4, 1), padding=(0, 0)),
             nn.LeakyReLU(0.2),

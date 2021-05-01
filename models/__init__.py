@@ -34,6 +34,29 @@ class FlattenInputForSeparateModel(nn.Module):
         return out
 
 
+class SeparateFeatureExtractor(nn.Module):
+    def __init__(self, in_channel=None, output_dim=256, **args):
+        super(SeparateFeatureExtractor, self).__init__()
+        self.layers = args["layers"]
+        self.output_dim = output_dim
+        self.flattener = FlattenInputForSeparateModel()
+        hidden = sum([l.output_dim for l in self.layers])
+        self.output = nn.Linear(hidden, output_dim)
+
+    def _apply(self, fn):
+        for layer in self.layers:
+            layer._apply(fn)
+        self.output._apply(fn)
+
+    def forward(self, x):
+        features = self.flattener(x)
+        result = []
+        for model, data in zip(self.layers, features):
+            result.append(model(data))
+        out = torch.cat(result, dim=-1)
+        return self.output(out)
+
+
 class Predictor(nn.Module):
     def __init__(self, layers=None, **args):
         super(Predictor, self).__init__()
