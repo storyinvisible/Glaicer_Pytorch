@@ -158,9 +158,9 @@ class Glacier_dmdt(Dataset):
         return float(self.new_df[self.index_dict[index]])
 
 
-class NewGlacierDataset(Dataset):
+class GlacierDataset3D(Dataset):
     def __init__(self, glacier_name, start_year, end_year, path="glaicer_dmdt.csv"):
-        super(NewGlacierDataset, self).__init__()
+        super(GlacierDataset3D, self).__init__()
         if start_year > end_year:
             start_year, end_year = end_year, start_year
         self.start_year = start_year
@@ -172,11 +172,11 @@ class NewGlacierDataset(Dataset):
         self.ERA5Data = [data[start_indx:end_idx + 1] for data in extract_data(glacier_name)]
 
     def get_index_year(self):
-        if self.start_year < 1971 or self.start_year > 2017:
+        if self.start_year < 1979 or self.start_year > 2017:
             raise ValueError(f"Start year does not exist: {self.start_year}")
-        if self.end_year < 1972 or self.end_year > 2018:
+        if self.end_year < 1980 or self.end_year > 2018:
             raise ValueError(f"End year does not exist: {self.end_year}")
-        return self.start_year - 1971, self.end_year - 1972
+        return self.start_year - 1979, self.end_year - 1980
 
     def get_index_dict(self):
         new_df = self.df[self.df["NAME"] == self.glacier_name]
@@ -192,7 +192,7 @@ class NewGlacierDataset(Dataset):
         return index_dict, new_df
 
     def __len__(self):
-        return self.end_year - self.start_year + 1
+        return self.end_year - self.start_year
 
     def __getitem__(self, index):
         x = np.array([data[index] for data in self.ERA5Data])
