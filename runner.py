@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def trainer(model,name, train_loader, testdataset, testsmb, critic, optimizer, epochs=500, lr=0.002,
+def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs=500, lr=0.002,
             reg=0.001, save_every=10, eval_every=10, save_path=None, show=False, device=None, test_split_at=None):
     device = torch.device("cpu") if device is None else device
     optim = optimizer(model.parameters(), lr=lr, weight_decay=reg)
@@ -20,7 +20,7 @@ def trainer(model,name, train_loader, testdataset, testsmb, critic, optimizer, e
     step = 0
     train_losses, test_losses = [], []
     base_path = os.path.join(save_path, model.name)
-    best_train_loss= 1000000
+    best_train_loss = 1000000
     if not os.path.exists(base_path):
         os.makedirs(base_path)
     if not os.path.exists(os.path.join(base_path, "plots")):
@@ -47,9 +47,9 @@ def trainer(model,name, train_loader, testdataset, testsmb, critic, optimizer, e
                     prediction_plot, predicted, actual = evaluate(model, testdataset, testsmb,
                                                                   split_at=test_split_at, device=device)
                     test_loss = critic(torch.tensor([predicted]), torch.tensor([actual])).item() / min(len(testdataset),
-                                                                                                         len(testsmb))
-                    if test_loss <best_train_loss:
-                        best_train_loss=test_loss
+                                                                                                       len(testsmb))
+                    if test_loss < best_train_loss:
+                        best_train_loss = test_loss
                     test_losses.append(test_loss)
                     mean_loss = total_train_loss / eval_every / train_loader.batch_size
                     train_losses.append(mean_loss)
@@ -80,17 +80,18 @@ def trainer(model,name, train_loader, testdataset, testsmb, critic, optimizer, e
         prediction_plot.savefig("{}/{}_{}_comp.png".format(os.path.join(base_path, "plots"), model.name,
                                                            testdataset.glacier))
         prediction_plot.close()
-    filename= "Loss/loss_summary"+model.name+".csv"
-    if os.path.exists(filename):
-        loss_df=pd.read_csv(filename)
-        loss_df[name]=[best_train_loss]
-        loss_df.to_csv(filename)
-    else:
-        if os.path.exists("Loss"):
-            os.mkdir("Loss")
-        loss_df=pd.DataFrame({name:[best_train_loss]})
-        loss_df.to_csv(filename)
-
+        if not os.path.exists(os.path.join(save_path, "Loss")):
+            os.makedirs(os.path.join(save_path, "Loss"))
+        filename = os.path.join(save_path, "Loss", "loss_summary_{}.csv".format(model.name))
+        if os.path.exists(filename):
+            loss_df = pd.read_csv(filename)
+            loss_df[model.name] = [best_train_loss]
+            loss_df.to_csv(filename)
+        else:
+            if os.path.exists("Loss"):
+                os.mkdir("Loss")
+            loss_df = pd.DataFrame({model.name: [best_train_loss]})
+            loss_df.to_csv(filename)
 
 
 def predict(model, dataset, device=None):
@@ -139,14 +140,14 @@ if __name__ == '__main__':
     JAKOBSHAVN_data = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2010, path="ECMWF_reanalysis_data")
     JAKOBSHAVN_smb_test = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2018, path="glacier_dmdt.csv")
     JAKOBSHAVN_data_test = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2018, path="ECMWF_reanalysis_data")
-    # QAJUUTTAP_SERMIA_smb = Glacier_dmdt("QAJUUTTAP_SERMIA", 1980, 2002, path="glaicer_dmdt.csv")
-    QAJUUTTAP_SERMIA_data = ERA5Datasets("QAJUUTTAP_SERMIA", 1980, 2002, path="ECMWF_reanalysis_data")
-    # STORSTROMMEN_smb = Glacier_dmdt("STORSTROMMEN", 1980, 2002, path="glaicer_dmdt.csv")
-    STORSTROMMEN_data = ERA5Datasets("STORSTROMMEN", 1980, 2002, path="ECMWF_reanalysis_data")
-    # HELHEIMGLETSCHER_smb = Glacier_dmdt("HELHEIMGLETSCHER", 1980, 2002, path="glaicer_dmdt.csv")
-    HELHEIMGLETSCHER_data = ERA5Datasets("HELHEIMGLETSCHER", 1980, 2002, path="ECMWF_reanalysis_data")
-    # DAUGAARD_smb = Glacier_dmdt("DAUGAARD-JENSEN", 1980, 2002, path="glaicer_dmdt.csv")
-    DAUGAARD_data = ERA5Datasets("DAUGAARD-JENSEN", 1980, 2002, path="ECMWF_reanalysis_data")
+    # # QAJUUTTAP_SERMIA_smb = Glacier_dmdt("QAJUUTTAP_SERMIA", 1980, 2002, path="glaicer_dmdt.csv")
+    # QAJUUTTAP_SERMIA_data = ERA5Datasets("QAJUUTTAP_SERMIA", 1980, 2002, path="ECMWF_reanalysis_data")
+    # # STORSTROMMEN_smb = Glacier_dmdt("STORSTROMMEN", 1980, 2002, path="glaicer_dmdt.csv")
+    # STORSTROMMEN_data = ERA5Datasets("STORSTROMMEN", 1980, 2002, path="ECMWF_reanalysis_data")
+    # # HELHEIMGLETSCHER_smb = Glacier_dmdt("HELHEIMGLETSCHER", 1980, 2002, path="glaicer_dmdt.csv")
+    # HELHEIMGLETSCHER_data = ERA5Datasets("HELHEIMGLETSCHER", 1980, 2002, path="ECMWF_reanalysis_data")
+    # # DAUGAARD_smb = Glacier_dmdt("DAUGAARD-JENSEN", 1980, 2002, path="glaicer_dmdt.csv")
+    # DAUGAARD_data = ERA5Datasets("DAUGAARD-JENSEN", 1980, 2002, path="ECMWF_reanalysis_data")
     glacier_dataset = GlacierDataset([JAKOBSHAVN_data], [JAKOBSHAVN_smb])
     loader = DataLoader(glacier_dataset, batch_size=16, shuffle=False)
     """
@@ -157,7 +158,8 @@ if __name__ == '__main__':
     """
     # construct the model
     # vcnn_model = VCNN(in_channel=5, output_dim=256, vertical_dim=289)
-    lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
+    lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=[256, 128, 64, 32], n_layers=1, bidirection=False,
+                               p=0.5)
     extractor = SeparateFeatureExtractor(output_dim=256, layers=[
         VCNN(in_channel=1, output_dim=256, vertical_dim=289),
         VCNN(in_channel=1, output_dim=256, vertical_dim=289),
