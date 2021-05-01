@@ -1,15 +1,16 @@
 import os.path
 
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import torch
 from torch import nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
+
 from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset
-from models import GlacierModel, LSTMPredictor, VCNN, SeparateFeatureExtractor
+from models import GlacierModel, LSTMPredictor, VCNN
 from utils import plot_loss
-import numpy as np
-import matplotlib.pyplot as plt
 
 
 def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs=500, lr=0.002,
@@ -136,44 +137,25 @@ def evaluate(model, dataset, target, split_at=None, device=None):
 
 if __name__ == '__main__':
     # set dataset
-    JAKOBSHAVN_smb = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2010, path="glacier_dmdt.csv")
-    JAKOBSHAVN_data = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2010, path="ECMWF_reanalysis_data")
-    JAKOBSHAVN_smb_test = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2018, path="glacier_dmdt.csv")
-    JAKOBSHAVN_data_test = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2018, path="ECMWF_reanalysis_data")
-    # # QAJUUTTAP_SERMIA_smb = Glacier_dmdt("QAJUUTTAP_SERMIA", 1980, 2002, path="glaicer_dmdt.csv")
-    # QAJUUTTAP_SERMIA_data = ERA5Datasets("QAJUUTTAP_SERMIA", 1980, 2002, path="ECMWF_reanalysis_data")
-    # # STORSTROMMEN_smb = Glacier_dmdt("STORSTROMMEN", 1980, 2002, path="glaicer_dmdt.csv")
-    # STORSTROMMEN_data = ERA5Datasets("STORSTROMMEN", 1980, 2002, path="ECMWF_reanalysis_data")
-    # # HELHEIMGLETSCHER_smb = Glacier_dmdt("HELHEIMGLETSCHER", 1980, 2002, path="glaicer_dmdt.csv")
-    # HELHEIMGLETSCHER_data = ERA5Datasets("HELHEIMGLETSCHER", 1980, 2002, path="ECMWF_reanalysis_data")
-    # # DAUGAARD_smb = Glacier_dmdt("DAUGAARD-JENSEN", 1980, 2002, path="glaicer_dmdt.csv")
-    # DAUGAARD_data = ERA5Datasets("DAUGAARD-JENSEN", 1980, 2002, path="ECMWF_reanalysis_data")
-    glacier_dataset = GlacierDataset([JAKOBSHAVN_data], [JAKOBSHAVN_smb])
+    glacier_name = "QAJUUTTAP_SERMIA"
+    start, mid, end = 1987, 2010, 2018
+    train_smb = Glacier_dmdt(glacier_name, start, mid, path="glacier_dmdt.csv")
+    train_data = ERA5Datasets(glacier_name, start, mid, path="ECMWF_reanalysis_data")
+    test_smb = Glacier_dmdt(glacier_name, start, end, path="glacier_dmdt.csv")
+    test_data = ERA5Datasets(glacier_name, start, end, path="ECMWF_reanalysis_data")
+    glacier_dataset = GlacierDataset([train_data], [train_smb])
     loader = DataLoader(glacier_dataset, batch_size=16, shuffle=False)
-    """
-    QAJ torch.Size([5, 14, 12])
-    STO torch.Size([5, 326, 12])
-    HEL torch.Size([5, 167, 12])
-    DAU torch.Size([5, 210, 12])
-    """
-    # construct the model
-    # vcnn_model = VCNN(in_channel=5, output_dim=256, vertical_dim=289)
-    lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=[256, 128, 64, 32], n_layers=1, bidirection=False,
-                               p=0.5)
-    extractor = SeparateFeatureExtractor(output_dim=256, layers=[
-        VCNN(in_channel=1, output_dim=256, vertical_dim=289),
-        VCNN(in_channel=1, output_dim=256, vertical_dim=289),
-        VCNN(in_channel=1, output_dim=256, vertical_dim=289),
-        VCNN(in_channel=1, output_dim=256, vertical_dim=289),
-        VCNN(in_channel=1, output_dim=256, vertical_dim=289),
-    ])
-
-    glacier_model = GlacierModel(extractor, lstm_model, name="separateVCNNLSTM")
-
-    # train model
+    # QAJ torch.Size([5, 14, 12])
+    # STO torch.Size([5, 326, 12])
+    # HEL torch.Size([5, 167, 12])
+    # DAU torch.Size([5, 210, 12])
     cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loss_function = torch.nn.MSELoss()
-    trainer(glacier_model, train_loader=loader, testdataset=JAKOBSHAVN_data_test, testsmb=JAKOBSHAVN_smb_test,
-            show=False,
-            device=cuda, epochs=300, lr=0.002, reg=0.001, save_every=1, eval_every=1, test_split_at=2010,
+
+    lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
+    extractor = VCNN(in_channel=5, output_dim=256, vertical_dim=14)
+    glacier_model = GlacierModel(extractor, lstm_model, name="HCNNLSTM-STOR")
+    trainer(glacier_model, train_loader=loader, testdataset=test_data, testsmb=test_smb,
+            show=False, device=cuda, epochs=1, lr=0.002, reg=0.001, save_every=1, eval_every=1,
+            test_split_at=mid,
             critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")

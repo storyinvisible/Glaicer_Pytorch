@@ -28,6 +28,7 @@ class HCNN(nn.Module):
             nn.Conv2d(in_channels=128, out_channels=256, kernel_size=(1, 2), stride=(1, 2)),
             nn.LeakyReLU(0.2),
             nn.Conv2d(in_channels=256, out_channels=output_dim, kernel_size=(1, 3), stride=(1, 1)),
+            nn.AdaptiveAvgPool2d(output_size=(1, 1)),
             nn.Flatten(),
         )
 
