@@ -33,4 +33,6 @@ class VCNN(nn.Module):
         )
 
     def forward(self, x):
-        return self.model(x)
+        out =self.model(x)
+        print(out.shape)
+        return out

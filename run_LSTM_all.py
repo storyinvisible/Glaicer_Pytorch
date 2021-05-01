@@ -48,8 +48,10 @@ for name in glaciers:
     train_dataset = GlacierDataset([train_data], [train_smb])
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)
     second=train_data[1].shape[1]
-    if second <24:
+    if second <48:
         continue
+    print(name)
+    print(train_data[1].shape)
     test_smb = Glacier_dmdt(name, end_year-test_years, end_year, path="glacier_dmdt.csv")
     test_data = ERA5Datasets(name, end_year-test_years, end_year, path="ECMWF_reanalysis_data")
     test_dataset = GlacierDataset([test_data], [test_smb])

@@ -25,6 +25,7 @@ class LSTMPredictor(nn.Module):
         self.layer_final=nn.Sequential(*layer_reset)
 
     def forward(self, x):
+        print(x.shape)
         x = torch.unsqueeze(x, 1)
         x, _ = self.lstm(x)
         x = self.activation(x)
