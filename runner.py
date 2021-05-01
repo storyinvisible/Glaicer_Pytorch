@@ -8,21 +8,25 @@ from models import GlacierModel, LSTMPredictor, VCNN, SeparateFeatureExtractor
 from utils import plot_loss
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
-
-def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs=500, lr=0.002,
+def trainer(model,glacier_name, train_loader, testdataset, testsmb,  critic, optimizer,
+            epochs=500, lr=0.002,
             reg=0.001, save_every=10, eval_every=10, save_path=None, show=False, device=None, test_split_at=None):
     device = torch.device("cpu") if device is None else device
     optim = optimizer(model.parameters(), lr=lr, weight_decay=reg)
     model = model.to(device)
     step = 0
     train_losses, test_losses = [], []
+    best_train_loss=100000
     for epoch in range(1, epochs + 1):
         total_train_loss = 0
         count = 0
+        real_smb=[]
         for feature, target in train_loader:
             feature, target = Variable(feature.type(torch.FloatTensor)).to(device), Variable(
                 target.type(torch.FloatTensor)).to(device)
+            real_smb.append(int(target.to("cpu")[0]))
             pred = model(feature)
             loss = critic(pred.squeeze(1), target.float())
             optim.zero_grad()
@@ -40,7 +44,8 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                 prediction_plot.savefig("plots/{}_{}_pred_and_actual.png".format(model.name, testdataset.glacier))
                 prediction_plot.close()
                 test_loss = critic(torch.tensor([predicted]), torch.tensor([actual])).item()
-
+                if test_loss <best_train_loss:
+                    best_train_loss=test_loss
                 test_losses.append(test_loss)
                 mean_loss = total_train_loss / eval_every
                 train_losses.append(mean_loss)
@@ -50,6 +55,14 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                 loss_plot.savefig("plots/{}_loss_plot.png".format(model.name))
                 loss_plot.close()
 
+    filename= "Losses/Loss_summary_"+model.name+".csv"
+    if os.path.exists(filename):
+        loss_df= pd.read_csv(filename)
+        loss_df[glacier_name]=[best_train_loss]
+        loss_df.to_csv(filename)
+    else:
+        loss_df=pd.DataFrame({glacier_name:[best_train_loss]})
+        loss_df.to_csv(filename)
 
 def predict(model, dataset, device=None):
     with torch.no_grad():
@@ -95,20 +108,12 @@ if __name__ == '__main__':
     # set dataset
     JAKOBSHAVN_smb = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glacier_dmdt.csv")
     JAKOBSHAVN_data = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2002, path="ECMWF_reanalysis_data")
-    # QAJUUTTAP_SERMIA_smb = Glacier_dmdt("QAJUUTTAP_ISBRAE", 1980, 2002, path="glaicer_dmdt.csv")
-    # QAJUUTTAP_SERMIA_data = ERA5Datasets("QAJUUTTAP_ISBRAE", 1980, 2002, path="ECMWF_reanalysis_data")
-    # STORSTROMMEN_smb = Glacier_dmdt("STORSTROMMEN", 1980, 2002, path="glaicer_dmdt.csv")
-    # STORSTROMMEN_data = ERA5Datasets("STORSTROMMEN", 1980, 2002, path="ECMWF_reanalysis_data")
-    # HELHEIMGLETSCHER_smb = Glacier_dmdt("HELHEIMGLETSCHER", 1980, 2002, path="glaicer_dmdt.csv")
-    # HELHEIMGLETSCHER_data = ERA5Datasets("HELHEIMGLETSCHER", 1980, 2002, path="ECMWF_reanalysis_data")
-    # DAUGAARD_smb = Glacier_dmdt("DAUGAARD-JENSEN", 1980, 2002, path="glaicer_dmdt.csv")
-    # DAUGAARD_data = ERA5Datasets("DAUGAARD-JENSEN", 1980, 2002, path="ECMWF_reanalysis_data")
     glacier_dataset = GlacierDataset([JAKOBSHAVN_data], [JAKOBSHAVN_smb])
     loader = DataLoader(glacier_dataset, batch_size=16, shuffle=True)
 
     # construct the model
     # vcnn_model = VCNN(in_channel=5, output_dim=256, vertical_dim=289)
-    lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
+    lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=[256,128,64,32], n_layers=1, bidirection=False, p=0.5)
     extractor = SeparateFeatureExtractor(output_dim=256, layers=[
         VCNN(in_channel=1, output_dim=256, vertical_dim=289),
         VCNN(in_channel=1, output_dim=256, vertical_dim=289),
@@ -122,6 +127,6 @@ if __name__ == '__main__':
     # train model
     cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loss_function = torch.nn.MSELoss()
-    trainer(glacier_model, train_loader=loader, testdataset=JAKOBSHAVN_data, testsmb=JAKOBSHAVN_smb, show=False,
-            device=cuda, epochs=3, lr=0.002, reg=0.001, save_every=10, eval_every=1, test_split_at=15,
+    trainer(glacier_model,"JAKOBSHAVN_ISBRAE", train_loader=loader,testdataset=JAKOBSHAVN_data, testsmb=JAKOBSHAVN_smb, show=False,
+            device=cuda, epochs=200, lr=0.002, reg=0.001, save_every=10, eval_every=1, test_split_at=15,
             critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
