@@ -74,8 +74,8 @@ def evaluate(model, dataset, split_at=None, device=None):
                 pred = model(torch.from_numpy(data).unsqueeze(0).float().to(device))
                 result.append(pred.item())
                 real.append(t)
-        except KeyError:
-            pass
+        except Exception as e:
+            print(e)
     plt.figure()
     year_range = np.arange(dataset.start_year, dataset.end_year)
     predicted, = plt.plot(year_range, result, color="blue", linestyle='--')
@@ -95,11 +95,13 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     glacier_info = pd.read_csv("Glacier_select.csv")
     new_df = glacier_info[glacier_info["NAME"]=="JAKOBSHAVN_ISBRAE"]
-    start_year = 2018 - int(new_df["Years"]) - 1
-    smb = Glacier_dmdt("JAKOBSHAVN_ISBRAE", start_year, 2018, path="glacier_dmdt.csv")
+    start_year = 2018 - int(new_df["Years"])
+    if start_year < 1979:
+        start_year = 1979
+    # smb = Glacier_dmdt("JAKOBSHAVN_ISBRAE", start_year, 2018, path="glacier_dmdt.csv")
     # data = ERA5Datasets("JAKOBSHAVN_ISBRAE", 1980, 2002, path="ECMWF_reanalysis_data")
     # dataset = GlacierDataset([data], [smb])
-    dataset = GlacierDataset3D("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glacier_dmdt.csv")
+    dataset = GlacierDataset3D("JAKOBSHAVN_ISBRAE", start_year, 2018, path="glacier_dmdt.csv")
     train_loader = DataLoader(dataset, batch_size=1, shuffle=True)
     tcnn_model = TCNN()
     twcnn_model = TWCNN()
@@ -110,9 +112,9 @@ if __name__ == '__main__':
         torch.nn.ReLU(),
         torch.nn.Linear(224, 1)
     ])
-    glacier_model = GlacierModel(twcnn_model, predictor_model, name="TWCNNLSTM3D")
+    glacier_model = GlacierModel(twcnn_model, lstm_model, name="TWCNNLSTM3D")
     cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loss_function = torch.nn.MSELoss()
     trainer(glacier_model, train_loader=train_loader, testdataset=dataset, show=False,
-            device=cuda, epochs=30, lr=0.002, reg=0.001, save_every=10, eval_every=1, test_split_at=15,
+            device=cuda, epochs=100, lr=0.002, reg=0.001, save_every=10, eval_every=1, test_split_at=15,
             critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
