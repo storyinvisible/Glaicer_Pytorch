@@ -48,12 +48,13 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                     test_loss = critic(torch.tensor([predicted]), torch.tensor([actual])).item() / min(len(testdataset),
                                                                                                        len(testsmb))
                     test_losses.append(test_loss)
-                    mean_loss = total_train_loss / eval_every / loader.batch_size
+                    mean_loss = total_train_loss / eval_every / train_loader.batch_size
                     train_losses.append(mean_loss)
                     prediction_plot.savefig(
                         "{}/{}_{}_pred_and_actual-{}_{}_{}.png".format(os.path.join(base_path, "plots"), model.name,
                                                                        testdataset.glacier, epoch,
-                                                                       loss.item() / loader.batch_size, test_loss))
+                                                                       loss.item() / train_loader.batch_size,
+                                                                       test_loss))
                     prediction_plot.close()
                     print("[INFO] Epoch {}|{} {} Loss: {:.4f} Eval: {:.4f}".format(epoch, epochs, step, mean_loss,
                                                                                    test_loss))
