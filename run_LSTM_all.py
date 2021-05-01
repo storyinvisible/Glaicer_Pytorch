@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import runner
-def train(name,train_loader ,test_dataset):
+def train(name,train_loader ,test_dataset,test_smb):
 
 
     # construct the model
@@ -47,13 +47,15 @@ for name in glaciers:
     train_data = ERA5Datasets(name, start_year, end_year-test_years, path="ECMWF_reanalysis_data")
     train_dataset = GlacierDataset([train_data], [train_smb])
     train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)
-    print(train_data[1].shape)
+    second=train_data[1].shape[1]
+    if second <24:
+        continue
     test_smb = Glacier_dmdt(name, end_year-test_years, end_year, path="glacier_dmdt.csv")
     test_data = ERA5Datasets(name, end_year-test_years, end_year, path="ECMWF_reanalysis_data")
     test_dataset = GlacierDataset([test_data], [test_smb])
-    train_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
-    train(name,train_loader ,test_dataset)
+    train(name,train_loader ,test_data,test_smb)
 
 # print(glaciers)
 # JAKOBSHAVN_smb = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glacier_dmdt.csv")

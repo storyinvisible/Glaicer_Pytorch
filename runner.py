@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs=500, lr=0.002,
+def trainer(model,name, train_loader, testdataset, testsmb, critic, optimizer, epochs=500, lr=0.002,
             reg=0.001, save_every=10, eval_every=10, save_path=None, show=False, device=None, test_split_at=None):
     device = torch.device("cpu") if device is None else device
     optim = optimizer(model.parameters(), lr=lr, weight_decay=reg)
@@ -20,6 +20,7 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
     step = 0
     train_losses, test_losses = [], []
     base_path = os.path.join(save_path, model.name)
+    best_train_loss= 1000000
     if not os.path.exists(base_path):
         os.makedirs(base_path)
     if not os.path.exists(os.path.join(base_path, "plots")):
@@ -46,7 +47,9 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                     prediction_plot, predicted, actual = evaluate(model, testdataset, testsmb,
                                                                   split_at=test_split_at, device=device)
                     test_loss = critic(torch.tensor([predicted]), torch.tensor([actual])).item() / min(len(testdataset),
-                                                                                                       len(testsmb))
+                                                                                                         len(testsmb))
+                    if test_loss <best_train_loss:
+                        best_train_loss=test_loss
                     test_losses.append(test_loss)
                     mean_loss = total_train_loss / eval_every / train_loader.batch_size
                     train_losses.append(mean_loss)
@@ -77,6 +80,17 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
         prediction_plot.savefig("{}/{}_{}_comp.png".format(os.path.join(base_path, "plots"), model.name,
                                                            testdataset.glacier))
         prediction_plot.close()
+    filename= "Loss/loss_summary"+model.name+".csv"
+    if os.path.exists(filename):
+        loss_df=pd.read_csv(filename)
+        loss_df[name]=[best_train_loss]
+        loss_df.to_csv(filename)
+    else:
+        if os.path.exists("Loss"):
+            os.mkdir("Loss")
+        loss_df=pd.DataFrame({name:[best_train_loss]})
+        loss_df.to_csv(filename)
+
 
 
 def predict(model, dataset, device=None):
