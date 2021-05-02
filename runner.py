@@ -14,7 +14,7 @@ from utils import plot_loss
 
 
 def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs=500, lr=0.002,
-            reg=0.001, save_every=10, eval_every=10, save_path=None, show=False, device=None, test_split_at=None,
+            reg=0, save_every=10, eval_every=10, save_path=None, show=False, device=None, test_split_at=None,
             best_only=True):
     device = torch.device("cpu") if device is None else device
     optim = optimizer(model.parameters(), lr=lr, weight_decay=reg)
@@ -22,8 +22,8 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
     step = 0
     train_losses, test_losses = [], []
     base_path = os.path.join(save_path, model.name)
-    best_train_loss = 1E7
-    test_loss = 1E7
+    best_train_loss = 1E5
+    test_loss = 1E5
     if not os.path.exists(base_path):
         os.makedirs(base_path)
     if not os.path.exists(os.path.join(base_path, "plots")):
@@ -49,18 +49,17 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                                                                   split_at=test_split_at, device=device)
                     test_loss = critic(torch.tensor([predicted]), torch.tensor([actual])).item() / min(len(testdataset),
                                                                                                        len(testsmb))
-                    if test_loss < best_train_loss:
-                        best_train_loss = test_loss
                     test_losses.append(test_loss)
                     mean_loss = total_train_loss / eval_every / train_loader.batch_size
                     train_losses.append(mean_loss)
+                    calc_loss = mean_loss * (test_loss ** 2)
                     if best_only:
-                        if test_loss < best_train_loss:
+                        if calc_loss <= best_train_loss:
                             prediction_plot.savefig(
-                                "{}/comp-{}_{:.4f}_{:.4f}.png".format(os.path.join(base_path, "plots"), epoch,
-                                                                      loss.item() / train_loader.batch_size,
-                                                                      test_loss))
+                                "{}/pred_and_act_{}.png".format(os.path.join(base_path, "plots"), testdataset.glacier))
                     prediction_plot.close()
+                    if calc_loss < best_train_loss:
+                        best_train_loss = calc_loss
                     print("[INFO] Epoch {}|{} {} Loss: {:.4f} Eval: {:.4f}".format(epoch, epochs, step, mean_loss,
                                                                                    test_loss))
                     loss_plot = plot_loss(train_losses, test_losses, show=show)
@@ -68,7 +67,8 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                     loss_plot.close()
                 if step % save_every == 0:
                     if best_only:
-                        if test_loss < best_train_loss:
+                        mean_loss = total_train_loss / eval_every / train_loader.batch_size
+                        if mean_loss * (test_loss ** 2) <= best_train_loss:
                             torch.save(model, os.path.join(base_path, "{}_model.h5".format(model.name)))
                     else:
                         torch.save(model, os.path.join(base_path, "{}_model-{}.h5".format(model.name, epoch)))
@@ -76,29 +76,28 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
         print("[INFO] Starting to exit!")
     finally:
         # save model
-        torch.save(model, os.path.join(base_path, "{}_model.h5".format(model.name)))
+        torch.save(model, os.path.join(base_path, "{}_model_final.h5".format(model.name)))
         # loss plot
         loss_plot = plot_loss(train_losses, test_losses, show=show)
-        loss_plot.savefig("{}/{}_loss.png".format(os.path.join(base_path, "plots"), model.name))
+        loss_plot.savefig("{}/{}_final_loss.png".format(os.path.join(base_path, "plots"), model.name))
         loss_plot.close()
         # loss record
         pd.DataFrame({"train_loss": train_losses, "eval_loss": test_losses}).to_csv(os.path.join(base_path, "loss.csv"))
         # Final evaluation
         prediction_plot, predicted, actual = evaluate(model, testdataset, testsmb, split_at=test_split_at,
                                                       device=device)
-        prediction_plot.savefig("{}/{}_{}_comp.png".format(os.path.join(base_path, "plots"), model.name,
-                                                           testdataset.glacier))
+        prediction_plot.savefig("{}/{}_{}_final_comp.png".format(os.path.join(base_path, "plots"), model.name,
+                                                                 testdataset.glacier))
         prediction_plot.close()
         if not os.path.exists(os.path.join(save_path, "Loss")):
             os.makedirs(os.path.join(save_path, "Loss"))
-        filename = os.path.join(save_path, "Loss", "loss_summary_{}.csv".format(model.name))
+        filename = os.path.join(save_path, "Loss", "loss_{}_{}.csv".format(testdataset.glacier, model.name))
         if os.path.exists(filename):
             loss_df = pd.read_csv(filename)
             loss_df[model.name] = [best_train_loss]
             loss_df.to_csv(filename)
         else:
-            if os.path.exists("Loss"):
-                os.mkdir("Loss")
+
             loss_df = pd.DataFrame({model.name: [best_train_loss]})
             loss_df.to_csv(filename)
 
@@ -164,6 +163,6 @@ if __name__ == '__main__':
     extractor = VCNN(in_channel=5, output_dim=256, vertical_dim=14)
     glacier_model = GlacierModel(extractor, lstm_model, name="HCNNLSTM-STOR")
     trainer(glacier_model, train_loader=loader, testdataset=test_data, testsmb=test_smb,
-            show=False, device=cuda, epochs=1, lr=0.002, reg=0.001, save_every=1, eval_every=1,
+            show=False, device=cuda, epochs=250, lr=0.002, reg=0, save_every=1, eval_every=1,
             test_split_at=mid, best_only=True,
             critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")

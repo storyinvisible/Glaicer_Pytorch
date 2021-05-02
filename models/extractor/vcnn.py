@@ -31,5 +31,4 @@ class VCNN(nn.Module):
 
     def forward(self, x):
         out =self.model(x)
-        print(out.shape)
         return out
