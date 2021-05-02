@@ -19,7 +19,6 @@ class GlacierModel(nn.Module):
 
     def forward(self, x):
         out = self.extra(x)
-        print(out.shape)
         out = self.pred(out)
         return out
 
