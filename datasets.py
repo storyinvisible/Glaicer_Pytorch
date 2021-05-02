@@ -159,17 +159,17 @@ class Glacier_dmdt(Dataset):
 
 
 class GlacierDataset3D(Dataset):
-    def __init__(self, glacier_name, start_year, end_year, path="glaicer_dmdt.csv"):
+    def __init__(self, glacier, start_year, end_year, path="glaicer_dmdt.csv"):
         super(GlacierDataset3D, self).__init__()
         if start_year > end_year:
             start_year, end_year = end_year, start_year
         self.start_year = start_year
         self.end_year = end_year
-        self.glacier_name = glacier_name
+        self.glacier = glacier
         self.df = pd.read_csv(path)
         start_indx, end_idx = self.get_index_year()
         self.index_dict, self.new_df = self.get_index_dict()
-        self.ERA5Data = [data[start_indx:end_idx + 1] for data in extract_data(glacier_name)]
+        self.ERA5Data = [data[start_indx:end_idx + 1] for data in extract_data(glacier)]
 
     def get_index_year(self):
         if self.start_year < 1979 or self.start_year > 2017:
@@ -179,7 +179,7 @@ class GlacierDataset3D(Dataset):
         return self.start_year - 1979, self.end_year - 1980
 
     def get_index_dict(self):
-        new_df = self.df[self.df["NAME"] == self.glacier_name]
+        new_df = self.df[self.df["NAME"] == self.glacier]
         index_dict = []
         start = False
         for year in self.df.columns:

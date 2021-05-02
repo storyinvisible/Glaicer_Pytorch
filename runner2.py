@@ -63,7 +63,7 @@ def trainer(model, train_loader, testdataset, critic, optimizer, epochs=500, lr=
                     print("[INFO] Epoch {}|{} {} Loss: {:.4f} Eval: {:.4f}".format(epoch, epochs, step, mean_loss,
                                                                                    test_loss))
                     loss_plot = plot_loss(train_losses, test_losses, show=show)
-                    loss_plot.savefig("{}/{}_{}_loss.png".format(os.path.join(base_path, "plots"), testdataset.glacier_name, model.name))
+                    loss_plot.savefig("{}/{}_{}_loss.png".format(os.path.join(base_path, "plots"), testdataset.glacier, model.name))
                     loss_plot.close()
     except KeyboardInterrupt:
         print("[INFO] Starting to exit!")
@@ -81,7 +81,7 @@ def trainer(model, train_loader, testdataset, critic, optimizer, epochs=500, lr=
                                                       device=device)
         prediction_plot = plot_smb(train_actual, actual, train_pred, predicted, testdataset.start_year, testdataset.start_year+len(train_loader)-1)
         prediction_plot.savefig("{}/{}_{}_comp.png".format(os.path.join(base_path, "plots"), model.name,
-                                                           testdataset.glacier_name))
+                                                           testdataset.glacier))
         prediction_plot.close()
         if not os.path.exists(os.path.join(save_path, "Loss")):
             os.makedirs(os.path.join(save_path, "Loss"))
@@ -132,7 +132,7 @@ def train_val_dataset(dataset, val_split=0.2):
     datasets['val'] = Subset(dataset, val_idx)
     datasets['val'].end_year = dataset.end_year
     datasets['val'].start_year = dataset.start_year
-    datasets['val'].glacier_name = dataset.glacier_name
+    datasets['val'].glacier = dataset.glacier
     return datasets
 
 if __name__ == '__main__':
