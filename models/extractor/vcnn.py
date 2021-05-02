@@ -24,13 +24,12 @@ class VCNN(nn.Module):
             nn.LeakyReLU(0.2),
             nn.Conv2d(in_channels=128, out_channels=64, kernel_size=(3, 1), stride=(2, 1)),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 1), stride=(2, 1)),
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(in_channels=64, out_channels=32, kernel_size=(3, 1), stride=(2, 1)),
-            nn.LeakyReLU(0.2),
+            nn.AdaptiveAvgPool2d(output_size=(36, 1)),
             nn.Flatten(),
-            nn.Linear(32 * 35, output_dim)
+            nn.Linear(2304, output_dim)
         )
 
     def forward(self, x):
-        return self.model(x)
+        out =self.model(x)
+        print(out.shape)
+        return out
