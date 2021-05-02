@@ -56,7 +56,6 @@ class SeparateFeatureExtractor(nn.Module):
             result.append(model(data))
         out = torch.cat(result, dim=-1)
         out = self.output(out)
-
         return out
 
 
