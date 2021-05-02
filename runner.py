@@ -52,13 +52,11 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                     test_losses.append(test_loss)
                     mean_loss = total_train_loss / eval_every / train_loader.batch_size
                     train_losses.append(mean_loss)
-                    calc_loss = mean_loss * (test_loss**2)
+                    calc_loss = mean_loss * (test_loss ** 2)
                     if best_only:
                         if calc_loss <= best_train_loss:
                             prediction_plot.savefig(
-                                "{}/comp-{}_{:.4f}_{:.4f}.png".format(os.path.join(base_path, "plots"), epoch,
-                                                                      loss.item() / train_loader.batch_size,
-                                                                      test_loss))
+                                "{}/pred_and_act_{}.png".format(os.path.join(base_path, "plots"), testdataset.glacier))
                     prediction_plot.close()
                     if calc_loss < best_train_loss:
                         best_train_loss = calc_loss
@@ -70,7 +68,7 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                 if step % save_every == 0:
                     if best_only:
                         mean_loss = total_train_loss / eval_every / train_loader.batch_size
-                        if mean_loss * (test_loss**2) <= best_train_loss:
+                        if mean_loss * (test_loss ** 2) <= best_train_loss:
                             torch.save(model, os.path.join(base_path, "{}_model.h5".format(model.name)))
                     else:
                         torch.save(model, os.path.join(base_path, "{}_model-{}.h5".format(model.name, epoch)))
@@ -89,7 +87,7 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
         prediction_plot, predicted, actual = evaluate(model, testdataset, testsmb, split_at=test_split_at,
                                                       device=device)
         prediction_plot.savefig("{}/{}_{}_final_comp.png".format(os.path.join(base_path, "plots"), model.name,
-                                                           testdataset.glacier))
+                                                                 testdataset.glacier))
         prediction_plot.close()
         if not os.path.exists(os.path.join(save_path, "Loss")):
             os.makedirs(os.path.join(save_path, "Loss"))
@@ -165,6 +163,6 @@ if __name__ == '__main__':
     extractor = VCNN(in_channel=5, output_dim=256, vertical_dim=14)
     glacier_model = GlacierModel(extractor, lstm_model, name="HCNNLSTM-STOR")
     trainer(glacier_model, train_loader=loader, testdataset=test_data, testsmb=test_smb,
-            show=False, device=cuda, epochs=1, lr=0.002, reg=0.001, save_every=1, eval_every=1,
+            show=False, device=cuda, epochs=250, lr=0.002, reg=0, save_every=1, eval_every=1,
             test_split_at=mid, best_only=True,
             critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
