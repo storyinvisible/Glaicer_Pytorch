@@ -16,15 +16,15 @@ class LSTMPredictor(nn.Module):
         self.activation = nn.LeakyReLU(0.2)
         self.dropout = nn.Dropout(p=p)
         if self.args["bidirection"]:
-            self.output = nn.Linear(hidden_dim[0] * 2, hidden_dim[1])
+            self.output = nn.Sequential(nn.Linear(hidden_dim * 2, hidden_dim//2),
+                                        nn.Tanh(),
+                                        nn.Linear(hidden_dim//2, 1))
+
         else:
-            self.output = nn.Linear(hidden_dim[0], hidden_dim[1])
-        layer_reset = []
-        for i in range(1, len(hidden_dim) - 1):
-            layer_reset.append(nn.Linear(hidden_dim[i], hidden_dim[i + 1]))
-            layer_reset.append(nn.Tanh())
-        layer_reset.append(nn.Linear(hidden_dim[-1], 1))
-        self.layer_final = nn.Sequential(*layer_reset)
+            self.output = nn.Sequential(nn.Linear(hidden_dim, hidden_dim//2),
+                                        nn.Tanh(),
+                                        nn.Linear(hidden_dim//2, 1))
+
 
     def forward(self, x):
         # print("input", x.shape)

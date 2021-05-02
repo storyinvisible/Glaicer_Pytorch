@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from models.predictors.ANNPredictor import ANNPredictor
+from models.predictors.ANNPredictor import ANNPredictor, ANNPredictor2
 from models.predictors.LSTMPredictor import LSTMPredictor
 from models.extractor.hcnn import HCNN
 from models.extractor.vcnn import VCNN
