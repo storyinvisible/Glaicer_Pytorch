@@ -50,14 +50,12 @@ class SeparateFeatureExtractor(nn.Module):
         self.output._apply(fn)
 
     def forward(self, x):
-        print(x.shape)
         features = self.flattener(x)
         result = []
         for model, data in zip(self.layers, features):
             result.append(model(data))
         out = torch.cat(result, dim=-1)
         out = self.output(out)
-        print(out.shape)
         return out
 
 
