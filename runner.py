@@ -93,7 +93,7 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
         prediction_plot.close()
         if not os.path.exists(os.path.join(save_path, "Loss")):
             os.makedirs(os.path.join(save_path, "Loss"))
-        filename = os.path.join(save_path, "Loss", "loss_{}_{}.csv".format(testdataset.name, model.name))
+        filename = os.path.join(save_path, "Loss", "loss_{}_{}.csv".format(testdataset.glacier, model.name))
         if os.path.exists(filename):
             loss_df = pd.read_csv(filename)
             loss_df[model.name] = [best_train_loss]
