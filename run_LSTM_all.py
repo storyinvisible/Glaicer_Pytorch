@@ -12,7 +12,7 @@ import pandas as pd
 import runner
 
 
-def train(name, train_loader, test_dataset, test_smb):
+def train(name, train_loader, test_dataset, test_smb, split_at):
     # construct the model
     # vcnn_model = VCNN(in_channel=5, output_dim=256, vertical_dim=289)
     lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=[256, 128, 64, 32], n_layers=1, bidirection=False,
@@ -31,8 +31,8 @@ def train(name, train_loader, test_dataset, test_smb):
     cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loss_function = torch.nn.MSELoss()
     runner.trainer(glacier_model, train_loader=train_loader, testdataset=test_dataset, testsmb=test_smb,
-                   show=True,
-                   device=cuda, epochs=150, lr=0.002, reg=0.001, save_every=10, eval_every=1, test_split_at=15,
+                   show=False,
+                   device=cuda, epochs=150, lr=0.002, reg=0.001, save_every=20, eval_every=1, test_split_at=split_at,
                    critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
 
 
@@ -59,7 +59,7 @@ for name in glaciers:
     test_dataset = GlacierDataset([test_data], [test_smb])
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
-    train(name, train_loader, test_data, test_smb)
+    train(name, train_loader, test_data, test_smb,int(years * 0.8))
 
 # print(glaciers)
 # JAKOBSHAVN_smb = Glacier_dmdt("JAKOBSHAVN_ISBRAE", 1980, 2002, path="glacier_dmdt.csv")
