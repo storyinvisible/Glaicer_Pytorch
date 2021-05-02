@@ -12,9 +12,9 @@ class TWCNN(nn.Module):
     from TCNN, we deal with data channel-wise, then concatnate 
     at the last layer.
     The output size after each layer is:
-    1  (14, 12, 13, 20)
-    2  (28, 6, 11, 18)
-    3  (56, 3, 9, 16)
+    1  (14, 12, 13, 25)
+    2  (28, 6, 11, 21)
+    3  (56, 3, 9, 17)
     4  (112, 1, 3, 4)
     5  (output_dim, 1, 1, 1)
     
@@ -28,14 +28,16 @@ class TWCNN(nn.Module):
         self.args = args
         self.output_dim = output_dim
         self.model = nn.Sequential(
-            nn.Conv3d(in_channels=in_channel, out_channels=14, kernel_size=(1, 3, 7), stride=(1, 1, 3), padding=0,
+            nn.Conv3d(in_channels=in_channel, out_channels=in_channel, kernel_size=(1, 1, 1), groups=7),
+            nn.ReLU(),
+            nn.Conv3d(in_channels=in_channel, out_channels=14, kernel_size=(1, 3, 8), stride=(1, 1, 3), padding=0,
                       groups=7),
             nn.LeakyReLU(0.2),
-            nn.Conv3d(in_channels=14, out_channels=28, kernel_size=(2, 3, 3), stride=(2, 1, 1), padding=0, groups=7),
+            nn.Conv3d(in_channels=14, out_channels=28, kernel_size=(2, 3, 5), stride=(2, 1, 1), padding=0, groups=7),
             nn.LeakyReLU(0.2),
-            nn.Conv3d(in_channels=28, out_channels=56, kernel_size=(2, 3, 3), stride=(2, 1, 1), padding=0, groups=7),
+            nn.Conv3d(in_channels=28, out_channels=56, kernel_size=(2, 3, 5), stride=(2, 1, 1), padding=0, groups=7),
             nn.LeakyReLU(0.2),
-            nn.Conv3d(in_channels=56, out_channels=112, kernel_size=(3, 3, 4), stride=(1, 3, 4), padding=0, groups=7),
+            nn.Conv3d(in_channels=56, out_channels=112, kernel_size=(3, 3, 5), stride=(1, 3, 4), padding=0, groups=7),
             nn.LeakyReLU(0.2),
             nn.Conv3d(in_channels=112, out_channels=output_dim, kernel_size=(1, 3, 4), stride=1, padding=0, groups=7),
             nn.LeakyReLU(0.2),

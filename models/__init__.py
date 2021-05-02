@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from models.predictors.ANNPredictor import ANNPredictor, ANNPredictor2
-from models.predictors.LSTMPredictor import LSTMPredictor
+from models.predictors.LSTMPredictor import LSTMPredictor, LSTMPredictor3D
 from models.extractor.hcnn import HCNN
 from models.extractor.vcnn import VCNN
 from models.extractor.tcnn import TCNN
@@ -58,7 +58,6 @@ class SeparateFeatureExtractor(nn.Module):
             result.append(model(data))
         out = torch.cat(result, dim=-1)
         out = self.output(out)
-        print(out.shape)
         return out
 
 

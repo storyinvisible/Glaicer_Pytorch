@@ -237,13 +237,13 @@ def extract_data(name):
     total_precipitation = file_obj.variables['tp'][:]
     u_wind = file_obj.variables['u10'][:]
     v_wind = file_obj.variables['v10'][:]
-    temperature_data = np.empty((0, 15, 64), np.float64)
-    pressure_data = np.empty((0, 15, 64), np.float64)
-    wind_data = np.empty((0, 15, 64), np.float64)
-    precipitation_data = np.empty((0, 15, 64), np.float64)
-    cloudcover_data = np.empty((0, 15, 64), np.float64)
-    ocean_data = np.empty((0, 15, 64), np.float64)
-    dew_point_temperature_data = np.empty((0, 15, 64), np.float64)
+    temperature_data = np.empty((0, 15, 80), np.float64)
+    pressure_data = np.empty((0, 15, 80), np.float64)
+    wind_data = np.empty((0, 15, 80), np.float64)
+    precipitation_data = np.empty((0, 15, 80), np.float64)
+    cloudcover_data = np.empty((0, 15, 80), np.float64)
+    ocean_data = np.empty((0, 15, 80), np.float64)
+    dew_point_temperature_data = np.empty((0, 15, 80), np.float64)
     # proceed on each glacier
     for m in range(len(glaciers)):
         glacier_name = glaciers.loc[m]['NAME']
@@ -340,13 +340,13 @@ def extract_data(name):
                                                    data_padding(dew_point_temperature_data_temp), axis=0)
             ocean_data = np.append(ocean_data, data_padding(ocean_data_temp), axis=0)
         break
-    return temperature_data.reshape(-1, 12, 15, 64), \
-           wind_data.reshape(-1, 12, 15, 64), \
-           pressure_data.reshape(-1, 12, 15, 64), \
-           precipitation_data.reshape(-1, 12, 15, 64), \
-           cloudcover_data.reshape(-1, 12, 15, 64), \
-           dew_point_temperature_data.reshape(-1, 12, 15, 64), \
-           ocean_data.reshape(-1, 12, 15, 64)
+    return temperature_data.reshape(-1, 12, 15, 80), \
+           wind_data.reshape(-1, 12, 15, 80), \
+           pressure_data.reshape(-1, 12, 15, 80), \
+           precipitation_data.reshape(-1, 12, 15, 80), \
+           cloudcover_data.reshape(-1, 12, 15, 80), \
+           dew_point_temperature_data.reshape(-1, 12, 15, 80), \
+           ocean_data.reshape(-1, 12, 15, 80)
 
 
 def haversine(lon1, lat1, lon2, lat2):
@@ -367,7 +367,7 @@ def haversine(lon1, lat1, lon2, lat2):
 
 # padding data to fixed shape
 def data_padding(data):
-    fixed_matrix = np.zeros((15, 64), dtype=np.float64)
+    fixed_matrix = np.zeros((15, 80), dtype=np.float64)
     fixed_matrix[0:data.shape[0], 0:data.shape[1]] = data
     res = np.expand_dims(fixed_matrix, 0)
     return res
