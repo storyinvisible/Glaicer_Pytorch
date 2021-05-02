@@ -14,7 +14,7 @@ from utils import plot_loss
 
 
 def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs=500, lr=0.002,
-            reg=0.001, save_every=10, eval_every=10, save_path=None, show=False, device=None, test_split_at=None,
+            reg=0, save_every=10, eval_every=10, save_path=None, show=False, device=None, test_split_at=None,
             best_only=True):
     device = torch.device("cpu") if device is None else device
     optim = optimizer(model.parameters(), lr=lr, weight_decay=reg)
