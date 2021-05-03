@@ -9,7 +9,7 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
 from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset
-from models import GlacierModel, LSTMPredictor, VCNN, HCNN
+from models import GlacierModel, LSTMPredictor, HCNN
 from utils import plot_loss
 
 
@@ -23,7 +23,9 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
     train_losses, test_losses = [], []
     base_path = os.path.join(save_path, model.name)
     best_train_loss = 1E5
+    best_test_loss = 1E5
     test_loss = 1E5
+    calc_loss = 1E5
     if not os.path.exists(base_path):
         os.makedirs(base_path)
     if not os.path.exists(os.path.join(base_path, "plots")):
@@ -47,19 +49,24 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                 if step % eval_every == 0:
                     prediction_plot, predicted, actual = evaluate(model, testdataset, testsmb,
                                                                   split_at=test_split_at, device=device)
+
                     test_loss = critic(torch.tensor([predicted]), torch.tensor([actual])).item() / min(len(testdataset),
                                                                                                        len(testsmb))
                     test_losses.append(test_loss)
                     mean_loss = total_train_loss / eval_every / train_loader.batch_size
                     train_losses.append(mean_loss)
-                    calc_loss = mean_loss * (test_loss ** 2)
                     if best_only:
-                        if calc_loss <= best_train_loss:
+                        if mean_loss * (test_loss ** 2) <= calc_loss:
+                            calc_loss = mean_loss * (test_loss ** 2)
+                            best_train_loss = mean_loss
+                            best_test_loss = test_loss
                             prediction_plot.savefig(
                                 "{}/pred_and_act_{}.png".format(os.path.join(base_path, "plots"), testdataset.glacier))
                     prediction_plot.close()
-                    if calc_loss < best_train_loss:
-                        best_train_loss = calc_loss
+                    if mean_loss * (test_loss ** 2) <= calc_loss:
+                        calc_loss = mean_loss * (test_loss ** 2)
+                        best_train_loss = mean_loss
+                        best_test_loss = test_loss
                     print("[INFO] Epoch {}|{} {} Loss: {:.4f} Eval: {:.4f}".format(epoch, epochs, step, mean_loss,
                                                                                    test_loss))
                     loss_plot = plot_loss(train_losses, test_losses, show=show)
@@ -68,7 +75,10 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                 if step % save_every == 0:
                     if best_only:
                         mean_loss = total_train_loss / eval_every / train_loader.batch_size
-                        if mean_loss * (test_loss ** 2) <= best_train_loss:
+                        if mean_loss * (test_loss ** 2) <= calc_loss:
+                            calc_loss = mean_loss * (test_loss ** 2)
+                            best_train_loss = mean_loss
+                            best_test_loss = test_loss
                             torch.save(model, os.path.join(base_path, "{}_model.h5".format(model.name)))
                     else:
                         torch.save(model, os.path.join(base_path, "{}_model-{}.h5".format(model.name, epoch)))
@@ -94,39 +104,39 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
         filename = os.path.join(save_path, "Loss", "loss.csv")
         if os.path.exists(filename):
             loss_df = pd.read_csv(filename)
-            loss_df[model.name] = [best_train_loss]
+            loss_df[model.name] = [best_train_loss, best_test_loss]
             loss_df.to_csv(filename)
         else:
-
-            loss_df = pd.DataFrame({model.name: [best_train_loss]})
+            loss_df = pd.DataFrame({model.name: [best_train_loss, best_test_loss]})
             loss_df.to_csv(filename)
 
 
+@torch.no_grad()
 def predict(model, dataset, device=None):
-    with torch.no_grad():
-        device = torch.device("cpu") if device is None else device
-        model = model.to(device)
-        result = []
-        try:
-            for data in dataset:
-                pred = model(data.unsqueeze(0).to(device))
-                result.append(pred.item())
-        except KeyError:
-            pass
+    device = torch.device("cpu") if device is None else device
+    model = model.to(device)
+    result = []
+    try:
+        for data in DataLoader(dataset, batch_size=len(dataset)):
+            pred = model(data.to(device))
+            result = pred.squeeze(1).detach().cpu()
+            result = [r.item() for r in result]
+    except KeyError:
+        pass
     return result
 
 
+@torch.no_grad()
 def evaluate(model, dataset, target, split_at=None, device=None):
-    with torch.no_grad():
-        device = torch.device("cpu") if device is None else device
-        result, real = [], []
-        try:
-            for data, t in zip(dataset, target):
-                pred = model(data.unsqueeze(0).to(device))
-                result.append(pred.item())
-                real.append(t)
-        except KeyError:
-            pass
+    device = torch.device("cpu") if device is None else device
+    result, real = [], []
+    size = len(dataset)
+    for data in DataLoader(dataset, batch_size=size):
+        pred = model(data.to(device))
+        result = pred.squeeze(1).detach().cpu()
+        result = [r.item() for r in result]
+        break
+    real = [t for t in target][0: size]
     plt.figure()
     year_range = np.arange(dataset.start_year, dataset.end_year)
     predicted, = plt.plot(year_range, result, color="blue", linestyle='--')
@@ -151,26 +161,15 @@ if __name__ == '__main__':
     test_smb = Glacier_dmdt(glacier_name, start, end, path="glacier_dmdt.csv")
     test_data = ERA5Datasets(glacier_name, start, end, path="ECMWF_reanalysis_data")
     glacier_dataset = GlacierDataset([train_data], [train_smb])
-    loader = DataLoader(glacier_dataset, batch_size=16, shuffle=False)
-    # QAJ torch.Size([5, 14, 12])
-    # STO torch.Size([5, 326, 12])
-    # HEL torch.Size([5, 167, 12])
-    # DAU torch.Size([5, 210, 12])
+    loader = DataLoader(glacier_dataset, batch_size=len(train_data), shuffle=False)
+
     cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loss_function = torch.nn.MSELoss()
 
-    lstm_model = LSTMPredictor(layers=None, input_dim=[256, 128, 64, 32], hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
+    lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
     extractor = HCNN(in_channel=5, output_dim=256, vertical_dim=326)
     glacier_model = GlacierModel(extractor, lstm_model, name="HCNNLSTM-STOR")
     trainer(glacier_model, train_loader=loader, testdataset=test_data, testsmb=test_smb,
-            show=False, device=cuda, epochs=250, lr=0.002, reg=0, save_every=1, eval_every=1,
-            test_split_at=mid, best_only=True,
-            critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
-
-    lstm_model = LSTMPredictor(layers=None, input_dim=[256, 128, 64, 32], hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
-    extractor = VCNN(in_channel=5, output_dim=256, vertical_dim=326)
-    glacier_model = GlacierModel(extractor, lstm_model, name="VCNNLSTM-STOR")
-    trainer(glacier_model, train_loader=loader, testdataset=test_data, testsmb=test_smb,
-            show=False, device=cuda, epochs=250, lr=0.002, reg=0, save_every=1, eval_every=1,
+            show=False, device=cuda, epochs=2, lr=0.002, reg=0, save_every=1, eval_every=1,
             test_split_at=mid, best_only=True,
             critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
