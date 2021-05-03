@@ -26,6 +26,10 @@ Then for other required packets, simply run:
 ```bash
 pip3 install -r requirements.txt
 ```
+## To simply test the model using previously saved models
+```
+python app.py -model saved_models_2D\HCNNLSTM-STORST\HCNNLSTM-STORST_model.h5 -glacier STORSTROMMEN -year 2000
+```
 
 ## File structure
 
