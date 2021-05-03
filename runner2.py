@@ -47,19 +47,19 @@ def trainer(model, train_loader, testdataset, critic, optimizer, epochs=500, lr=
                 if step % eval_every == 0:
                     predicted, actual = evaluate(model, testdataset, device=device)
                     test_loss = critic(torch.tensor([predicted]), torch.tensor([actual])).item() / len(testdataset)
+                    test_losses.append(test_loss)
+                    mean_loss = total_train_loss / count / train_loader.batch_size
+                    train_losses.append(mean_loss)
                     if test_loss < best_train_loss:
                         best_train_loss = test_loss
-                    test_losses.append(test_loss)
-                    mean_loss = total_train_loss / eval_every / train_loader.batch_size
-                    train_losses.append(mean_loss)
-                    if best_only:
-                        if test_loss < best_train_loss:
-                            prediction_plot = plot_smb(train_actual, actual, train_pred, predicted, testdataset.start_year, testdataset.start_year+len(train_loader))
-                            prediction_plot.savefig(
-                                "{}/comp-{}_{:.4f}_{:.4f}.png".format(os.path.join(base_path, "plots"), epoch,
-                                                                      loss.item() / train_loader.batch_size,
-                                                                      test_loss))
-                            prediction_plot.close()
+                    # if best_only:
+                    #     if mean_loss < best_train_loss:
+                    #         prediction_plot = plot_smb(train_actual, actual, train_pred, predicted, testdataset.start_year, testdataset.start_year+len(train_loader))
+                    #         prediction_plot.savefig(
+                    #             "{}/comp-{}_{:.4f}_{:.4f}.png".format(os.path.join(base_path, "plots"), epoch,
+                    #                                                   loss.item() / train_loader.batch_size,
+                    #                                                   test_loss))
+                    #         prediction_plot.close()
                     print("[INFO] Epoch {}|{} {} Loss: {:.4f} Eval: {:.4f}".format(epoch, epochs, step, mean_loss,
                                                                                    test_loss))
                     loss_plot = plot_loss(train_losses, test_losses, show=show)
@@ -88,12 +88,12 @@ def trainer(model, train_loader, testdataset, critic, optimizer, epochs=500, lr=
         filename = os.path.join(save_path, "Loss", "loss_summary_{}.csv".format(model.name))
         if os.path.exists(filename):
             loss_df = pd.read_csv(filename)
-            loss_df[model.name] = [best_train_loss]
+            loss_df[test_dataset.glacier] = [best_train_loss]
             loss_df.to_csv(filename)
         else:
             if os.path.exists("Loss"):
                 os.mkdir("Loss")
-            loss_df = pd.DataFrame({model.name: [best_train_loss]})
+            loss_df = pd.DataFrame({test_dataset.glacier: [best_train_loss]})
             loss_df.to_csv(filename)
 
 
@@ -156,7 +156,7 @@ if __name__ == '__main__':
             twcnn_model = TWCNN()
             lstm_model = LSTMPredictor(layers=None, input_dim=256, n_layers=1, bidirection=False, p=0.5)
             # ann_model = ANNPredictor2(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
-            glacier_model = GlacierModel(extractor, lstm_model, name="TWCNNLSTM3D")
+            glacier_model = GlacierModel(extractor, lstm_model, name="TWCNNLSTM2D")
             cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             loss_function = torch.nn.MSELoss()
             trainer(glacier_model, train_loader=train_loader, testdataset=test_dataset, show=False,
