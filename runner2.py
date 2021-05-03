@@ -50,8 +50,9 @@ def trainer(model, train_loader, testdataset, critic, optimizer, epochs=500, lr=
                     test_losses.append(test_loss)
                     mean_loss = total_train_loss / count / train_loader.batch_size
                     train_losses.append(mean_loss)
-                    if test_loss < best_train_loss:
-                        best_train_loss = test_loss
+                    cal_loss = mean_loss*(test_loss**2)
+                    if cal_loss < best_train_loss:
+                        best_train_loss = cal_loss
                     # if best_only:
                     #     if mean_loss < best_train_loss:
                     #         prediction_plot = plot_smb(train_actual, actual, train_pred, predicted, testdataset.start_year, testdataset.start_year+len(train_loader))
