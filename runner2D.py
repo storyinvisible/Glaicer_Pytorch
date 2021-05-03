@@ -50,7 +50,7 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                     test_loss = critic(torch.tensor([predicted]), torch.tensor([actual])).item() / min(len(testdataset),
                                                                                                        len(testsmb))
                     test_losses.append(test_loss)
-                    mean_loss = total_train_loss / eval_every / train_loader.batch_size
+                    mean_loss = total_train_loss / count / train_loader.batch_size
                     train_losses.append(mean_loss)
                     calc_loss = mean_loss * (test_loss ** 2)
                     if best_only:
