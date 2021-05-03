@@ -9,7 +9,7 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
 from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset
-from models import GlacierModel, LSTMPredictor, VCNN
+from models import GlacierModel, LSTMPredictor, VCNN, HCNN
 from utils import plot_loss
 
 
@@ -91,7 +91,7 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
         prediction_plot.close()
         if not os.path.exists(os.path.join(save_path, "Loss")):
             os.makedirs(os.path.join(save_path, "Loss"))
-        filename = os.path.join(save_path, "Loss", "loss_{}_{}.csv".format(testdataset.glacier, model.name))
+        filename = os.path.join(save_path, "Loss", "loss.csv")
         if os.path.exists(filename):
             loss_df = pd.read_csv(filename)
             loss_df[model.name] = [best_train_loss]
@@ -144,8 +144,8 @@ def evaluate(model, dataset, target, split_at=None, device=None):
 
 if __name__ == '__main__':
     # set dataset
-    glacier_name = "QAJUUTTAP_SERMIA"
-    start, mid, end = 1987, 2010, 2018
+    glacier_name = "STORSTROMMEN"
+    start, mid, end = 1979, 2008, 2018
     train_smb = Glacier_dmdt(glacier_name, start, mid, path="glacier_dmdt.csv")
     train_data = ERA5Datasets(glacier_name, start, mid, path="ECMWF_reanalysis_data")
     test_smb = Glacier_dmdt(glacier_name, start, end, path="glacier_dmdt.csv")
@@ -159,9 +159,17 @@ if __name__ == '__main__':
     cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loss_function = torch.nn.MSELoss()
 
-    lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
-    extractor = VCNN(in_channel=5, output_dim=256, vertical_dim=14)
+    lstm_model = LSTMPredictor(layers=None, input_dim=[256, 128, 64, 32], hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
+    extractor = HCNN(in_channel=5, output_dim=256, vertical_dim=326)
     glacier_model = GlacierModel(extractor, lstm_model, name="HCNNLSTM-STOR")
+    trainer(glacier_model, train_loader=loader, testdataset=test_data, testsmb=test_smb,
+            show=False, device=cuda, epochs=250, lr=0.002, reg=0, save_every=1, eval_every=1,
+            test_split_at=mid, best_only=True,
+            critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
+
+    lstm_model = LSTMPredictor(layers=None, input_dim=[256, 128, 64, 32], hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
+    extractor = VCNN(in_channel=5, output_dim=256, vertical_dim=326)
+    glacier_model = GlacierModel(extractor, lstm_model, name="VCNNLSTM-STOR")
     trainer(glacier_model, train_loader=loader, testdataset=test_data, testsmb=test_smb,
             show=False, device=cuda, epochs=250, lr=0.002, reg=0, save_every=1, eval_every=1,
             test_split_at=mid, best_only=True,
