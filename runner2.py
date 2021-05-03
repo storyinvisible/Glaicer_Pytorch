@@ -4,7 +4,7 @@ from torch import nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader, Subset
 from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset, GlacierDataset3D
-from models import GlacierModel, ANNPredictor, ANNPredictor2, LSTMPredictor, LSTMPredictor3D, Predictor, HCNN, VCNN, TCNN, TWCNN
+from models import GlacierModel, ANNPredictor, ANNPredictor2, LSTMPredictor, LSTMPredictor3D, Predictor, TCNN, TWCNN, TWCNN2D, SeparateFeatureExtractor3D
 from utils import plot_loss, plot_smb
 import numpy as np
 import pandas as pd
@@ -140,21 +140,27 @@ if __name__ == '__main__':
     glacier_info = pd.read_csv("Glacier_select.csv")
     glaciers =list(glacier_info["NAME"])
     for name in glaciers:
-        new_df = glacier_info[glacier_info["NAME"]==name]
-        start_year = 2018 - int(new_df["Years"])
-        if start_year < 1979:
-            start_year = 1979
-        dataset = GlacierDataset3D(name, start_year, 2018, path="glacier_dmdt.csv")
-        datasets = train_val_dataset(dataset)
-        train_loader = DataLoader(datasets['train'], batch_size=1)
-        test_dataset = datasets['val']
-        # tcnn_model = TCNN()
-        twcnn_model = TWCNN()
-        lstm_model = LSTMPredictor3D(layers=None, input_dim=224, n_layers=1, bidirection=False, p=0.5)
-        ann_model = ANNPredictor2(layers=None, input_dim=224, hidden_dim=224, n_layers=1, bidirection=False, p=0.5)
-        glacier_model = GlacierModel(twcnn_model, lstm_model, name="TWCNNLSTM3D")
-        cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        loss_function = torch.nn.MSELoss()
-        trainer(glacier_model, train_loader=train_loader, testdataset=test_dataset, show=False,
-                device=cuda, epochs=20, lr=0.002, reg=0.001, save_every=10, eval_every=1, test_split_at=15,
-                critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
+        try:
+            new_df = glacier_info[glacier_info["NAME"]==name]
+            start_year = 2018 - int(new_df["Years"])
+            if start_year < 1979:
+                start_year = 1979
+            dataset = GlacierDataset3D(name, start_year, 2018, path="glacier_dmdt.csv")
+            datasets = train_val_dataset(dataset)
+            train_loader = DataLoader(datasets['train'], batch_size=1)
+            test_dataset = datasets['val']
+            # tcnn_model = TCNN()
+            extractor = SeparateFeatureExtractor3D(output_dim=256, layers=[
+                TWCNN2D(),TWCNN2D(),TWCNN2D(),TWCNN2D(),TWCNN2D(),TWCNN2D(), TWCNN2D()
+            ])
+            twcnn_model = TWCNN()
+            lstm_model = LSTMPredictor(layers=None, input_dim=256, n_layers=1, bidirection=False, p=0.5)
+            # ann_model = ANNPredictor2(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
+            glacier_model = GlacierModel(extractor, lstm_model, name="TWCNNLSTM3D")
+            cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            loss_function = torch.nn.MSELoss()
+            trainer(glacier_model, train_loader=train_loader, testdataset=test_dataset, show=False,
+                    device=cuda, epochs=20, lr=0.002, reg=0.001, save_every=10, eval_every=1, test_split_at=15,
+                    critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
+        except:
+            continue

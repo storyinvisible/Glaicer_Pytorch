@@ -20,13 +20,13 @@ def plot_smb(actual_train, actual_test, pred_train, pred_test, train_start_year,
     start, end = train_start_year, test_start_year + len(actual_test)
     train_year_range = np.arange(start, start + len(actual_train))
     test_year_range = np.arange(test_start_year, end)
-    plt.plot(train_year_range, actual_train, color="red", linewidth=2)
+    train_actual, = plt.plot(train_year_range, actual_train, color="red", linewidth=2)
     plt.plot(train_year_range, pred_train, color="blue", linestyle='--')
     actual, = plt.plot(test_year_range, actual_test, color="green", linewidth=2)
     predict, = plt.plot(test_year_range, pred_test, color="blue", linestyle='--')
     plt.ylabel("dm/dt")
     plt.xlabel("year")
-    plt.legend([actual, predict], ["Actual", "Predict"], loc="upper left")
+    plt.legend([train_actual, actual, predict], ["Train Actual", "Test Actual", "Predict"], loc="upper left")
     if show:
         plt.show()
     return plt

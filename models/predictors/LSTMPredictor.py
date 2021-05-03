@@ -35,7 +35,7 @@ class LSTMPredictor(nn.Module):
         return out
 
 class LSTMPredictor3D(nn.Module):
-    def __init__(self, input_dim=224, hidden_dim=[224,128,64,32], p=0.5, **args):
+    def __init__(self, input_dim=384, hidden_dim=[384,128,64,32], p=0.5, **args):
         super(LSTMPredictor, self).__init__()
         assert "bidirection" in args
         assert "n_layers" in args
