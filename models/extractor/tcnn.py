@@ -8,12 +8,12 @@ class TCNN(nn.Module):
     assume that the inputs are ordered in (Type, Month, axis_x, 
     axis_y), where type is ordered in (temperature, wind, press-
     ure, precipitation, cloud_cover, humidity, ocean). The kern-
-    el design is (1, 3, 7) in first layer by default.
+    el design is (1, 3, 5) in first layer by default.
     The output size after each layer is:
-    1  (32, 12, 13, 20)
-    2  (64, 6, 11, 18)
-    3  (128, 3, 9, 16)
-    4  (256, 1, 3, 4)
+    1  (32, 12, 13, 16)
+    2  (64, 6, 11, 14)
+    3  (128, 3, 9, 12)
+    4  (256, 1, 3, 3)
     5  (output_dim, 1, 1, 1)
     
     Parameters:
@@ -26,7 +26,7 @@ class TCNN(nn.Module):
         self.args = args
         self.output_dim = output_dim
         self.model = nn.Sequential(
-            nn.Conv3d(in_channels=in_channel, out_channels=32, kernel_size=(1, 3, 7), stride=(1, 1, 3), padding=0),
+            nn.Conv3d(in_channels=in_channel, out_channels=32, kernel_size=(1, 3, 5), stride=(1, 1, 5), padding=0),
             nn.LeakyReLU(0.2),
             nn.Conv3d(in_channels=32, out_channels=64, kernel_size=(2, 3, 3), stride=(2, 1, 1), padding=0),
             nn.LeakyReLU(0.2),
@@ -34,7 +34,7 @@ class TCNN(nn.Module):
             nn.LeakyReLU(0.2),
             nn.Conv3d(in_channels=128, out_channels=256, kernel_size=(3, 3, 4), stride=(1, 3, 4), padding=0),
             nn.LeakyReLU(0.2),
-            nn.Conv3d(in_channels=256, out_channels=output_dim, kernel_size=(1, 3, 4), stride=(1, 1), padding=0),
+            nn.Conv3d(in_channels=256, out_channels=output_dim, kernel_size=(1, 3, 3), stride=(1, 1, 1), padding=0),
             nn.LeakyReLU(0.2),
             nn.Flatten(),
         )
