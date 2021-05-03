@@ -51,22 +51,22 @@ class TWCNN2D(nn.Module):
     """ Class Summary
     This class is used for 3-d data convolution. We do 2d convo-
     lution considering time as channels. When taking inputs, we 
-    assume that the inputs are ordered in (Type, Month, axis_x, 
-    axis_y), where type is ordered in (temperature, wind, press-
-    ure, precipitation, cloud_cover, humidity, ocean). The kern-
-    el design is (1, 3, 7) in first layer by default. Different 
+    assume that the inputs are ordered in (Month, axis_x, 
+    axis_y). The kernel design is (1, 1) in first layer to zero
+    out gradient of the padding blocks by default. Different 
     from TCNN, we deal with data channel-wise, then concatnate 
     at the last layer.
     The output size after each layer is:
     1  (12, 15, 80)
-    2  (24, 6, 11, 21)
-    3  (48, 3, 9, 17)
-    4  (96, 1, 3, 4)
-    5  (output_dim, 1, 1, 1)
-    
+    2  (24, 13, 25)
+    3  (48, 11, 21)
+    4  (96, 9, 17)
+    5  (48, 3, 4)
+    6  (output_dim, 1, 1)
+
     Parameters:
-    - in_channel: number of input type. 7 by default.
-    - output_dim: output_dim for latent features. 224 by fefault
+    - in_channel: number of month. 12 by default.
+    - output_dim: output_dim for latent features. 48 by fefault
     """
 
     def __init__(self, in_channel=12, output_dim=48, **args):
