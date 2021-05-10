@@ -1,29 +1,34 @@
 import os
-import torch
+from os.path import join
+
+import netCDF4 as nc
 import numpy as np
 import pandas as pd
-import netCDF4 as nc
-from os.path import join
+import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
 
 class GlacierDataset(Dataset):
-    def __init__(self, ERA5Data, dmdtData):
+    def __init__(self, ERA5Data, dmdtData, last_year=False):
         if not isinstance(ERA5Data, list):
             ERA5Data = [ERA5Data]
         if not isinstance(dmdtData, list):
             dmdtData = [dmdtData]
+        self.last_year = last_year
         self.ERA5_datasets = {ERA5.glacier: ERA5 for ERA5 in ERA5Data}
         self.dmdt_datasets = {dmdt.glacier: dmdt for dmdt in dmdtData}
         self.ERA5_index = {}
         self.dmdt_index = {}
+        self.last_year_dmdt = {}
         self.indexs = []
         self.dataset_name = []
         for ERA5, dmdt in zip(ERA5Data, dmdtData):
             era5_start_index, era5_end_index, dmdt_start_index, dmdt_end_index, size = self.check_match(ERA5, dmdt)
             self.ERA5_index[ERA5.glacier] = (era5_start_index, era5_end_index)
             self.dmdt_index[dmdt.glacier] = (dmdt_start_index, dmdt_end_index)
+            if last_year:
+                self.last_year_dmdt[dmdt.glacier] = (dmdt_start_index - 1, dmdt_end_index - 1)
             self.indexs.append(size)
             self.dataset_name.append(ERA5.glacier)
         self.data_size = sum(self.indexs)
@@ -62,8 +67,14 @@ class GlacierDataset(Dataset):
         glacier_name = self.dataset_name[i]
         ERA5dataset = self.ERA5_datasets[glacier_name]
         dmdtdataset = self.dmdt_datasets[glacier_name]
+        if self.last_year:
+            last_dmdt = self.dmdt_datasets[glacier_name]
+            last_start_index, _ = self.last_year_dmdt[glacier_name]
         era5_start_index, _ = self.ERA5_index[glacier_name]
         dmdt_start_index, _ = self.dmdt_index[glacier_name]
+        if self.last_year:
+            return (ERA5dataset[era5_start_index + num], last_dmdt[last_start_index + num]), \
+                   dmdtdataset[dmdt_start_index + num]
         return ERA5dataset[era5_start_index + num], dmdtdataset[dmdt_start_index + num]
 
 

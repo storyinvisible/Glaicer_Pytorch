@@ -1,26 +1,30 @@
 import torch
 import torch.nn as nn
-from models.predictors.ANNPredictor import ANNPredictor, ANNPredictor2
-from models.predictors.LSTMPredictor import LSTMPredictor, LSTMPredictor3D
+
 from models.extractor.hcnn import HCNN
-from models.extractor.vcnn import VCNN
+from models.extractor.hinverted import HInvertedBlock, HInvertedResidual
 from models.extractor.tcnn import TCNN
 from models.extractor.twcnn import TWCNN, TWCNN2D
-from models.extractor.hinverted import HInvertedBlock, HInvertedResidual
+from models.extractor.vcnn import VCNN
 from models.extractor.vinverted import VInvertedBlock, VInvertedResidual
+from models.predictors.ANNPredictor import ANNPredictor, ANNPredictor2
+from models.predictors.LSTMPredictor import LSTMPredictor, LSTMPredictor3D
 
 
 class GlacierModel(nn.Module):
-    def __init__(self, extra, pred, name):
+    def __init__(self, extra, pred, name, use_last_year_smb=False):
         super(GlacierModel, self).__init__()
         self.extra = extra
         self.pred = pred
         self.name = name
+        self.last_year = use_last_year_smb
 
-    def forward(self, x):
+    def forward(self, x, last_dmdt=None):
+        if self.last_year:
+            out = self.extra(x)
+            return self.pred(out, last_dmdt)
         out = self.extra(x)
-        out = self.pred(out)
-        return out
+        return self.pred(out)
 
 
 class FlattenInputForSeparateModel(nn.Module):
@@ -69,6 +73,7 @@ class Predictor(nn.Module):
 
     def forward(self, x):
         return self.predictor(x)
+
 
 class FlattenInputForSeparateModel3D(nn.Module):
     def __init__(self, concate=False):

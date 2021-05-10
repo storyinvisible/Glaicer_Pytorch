@@ -9,7 +9,7 @@ from utils import plot_loss
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import runner
+import runner2D
 
 
 def train(name, train_loader, test_dataset, test_smb, split_at):
@@ -30,7 +30,7 @@ def train(name, train_loader, test_dataset, test_smb, split_at):
     # train model
     cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loss_function = torch.nn.MSELoss()
-    runner.trainer(glacier_model, train_loader=train_loader, testdataset=test_dataset, testsmb=test_smb,
+    runner2D.trainer(glacier_model, train_loader=train_loader, testdataset=test_dataset, testsmb=test_smb,
                    show=False,
                    device=cuda, epochs=150, lr=0.002, reg=0.001, save_every=20, eval_every=1, test_split_at=split_at,
                    critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")

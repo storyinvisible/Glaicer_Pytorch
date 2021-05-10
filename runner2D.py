@@ -7,15 +7,13 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-
-from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset
-from models import GlacierModel, LSTMPredictor, HCNN
 from utils import plot_loss
 
 
 def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs=500, lr=0.002,
-            reg=0, save_every=10, eval_every=10, save_path=None, show=False, device=None, test_split_at=None,
-            best_only=True):
+            test_last_year_dmdt=None,
+            use_last_year=False, reg=0, save_every=10, eval_every=10, save_path=None, show=False, device=None,
+            test_split_at=None, best_only=True):
     device = torch.device("cpu") if device is None else device
     optim = optimizer(model.parameters(), lr=lr, weight_decay=reg)
     model = model.to(device)
@@ -35,9 +33,16 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
             total_train_loss = 0
             count = 0
             for feature, target in train_loader:
-                feature, target = Variable(feature.type(torch.FloatTensor)).to(device), Variable(
-                    target.type(torch.FloatTensor)).to(device)
-                pred = model(feature)
+                if use_last_year:
+                    feature, last_year_dmdt = feature
+                    feature = Variable(feature.type(torch.FloatTensor)).to(device)
+                    last_year_dmdt = Variable(last_year_dmdt.type(torch.FloatTensor)).to(device).unsqueeze(1)
+                    target = Variable(target.type(torch.FloatTensor)).to(device)
+                    pred = model(feature, last_year_dmdt)
+                else:
+                    feature, target = Variable(feature.type(torch.FloatTensor)).to(device), Variable(
+                        target.type(torch.FloatTensor)).to(device)
+                    pred = model(feature)
                 loss = critic(pred.squeeze(1), target.float())
                 optim.zero_grad()
                 loss.backward(retain_graph=True)
@@ -48,6 +53,8 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
                 count += 1
                 if step % eval_every == 0:
                     prediction_plot, predicted, actual = evaluate(model, testdataset, testsmb,
+                                                                  last_year_dmdt=test_last_year_dmdt,
+                                                                  use_last_year_dmdt=use_last_year,
                                                                   split_at=test_split_at, device=device)
 
                     test_loss = critic(torch.tensor([predicted]), torch.tensor([actual])).item() / min(len(testdataset),
@@ -95,7 +102,8 @@ def trainer(model, train_loader, testdataset, testsmb, critic, optimizer, epochs
         pd.DataFrame({"train_loss": train_losses, "eval_loss": test_losses}).to_csv(os.path.join(base_path, "loss.csv"))
         # Final evaluation
         prediction_plot, predicted, actual = evaluate(model, testdataset, testsmb, split_at=test_split_at,
-                                                      device=device)
+                                                      use_last_year_dmdt=use_last_year,
+                                                      device=device, last_year_dmdt=test_last_year_dmdt)
         prediction_plot.savefig("{}/{}_{}_final_comp.png".format(os.path.join(base_path, "plots"), model.name,
                                                                  testdataset.glacier))
         prediction_plot.close()
@@ -127,15 +135,24 @@ def predict(model, dataset, device=None):
 
 
 @torch.no_grad()
-def evaluate(model, dataset, target, split_at=None, device=None):
+def evaluate(model, dataset, target, split_at=None, device=None, last_year_dmdt=None, use_last_year_dmdt=False):
     device = torch.device("cpu") if device is None else device
     result, real = [], []
     size = len(dataset)
-    for data in DataLoader(dataset, batch_size=size):
-        pred = model(data.to(device))
-        result = pred.squeeze(1).detach().cpu()
-        result = [r.item() for r in result]
-        break
+    if use_last_year_dmdt:
+        for data, last_dmdt in zip(DataLoader(dataset, batch_size=size), DataLoader(last_year_dmdt, batch_size=size)):
+            data = Variable(data.type(torch.FloatTensor)).to(device)
+            last_dmdt = Variable(last_dmdt.type(torch.FloatTensor)).to(device).unsqueeze(1)
+            pred = model(data.to(device), last_dmdt.to(device))
+            result = pred.squeeze(1).detach().cpu()
+            result = [r.item() for r in result]
+            break
+    else:
+        for data in DataLoader(dataset, batch_size=size):
+            pred = model(data.to(device))
+            result = pred.squeeze(1).detach().cpu()
+            result = [r.item() for r in result]
+            break
     real = [t for t in target][0: size]
     plt.figure()
     year_range = np.arange(dataset.start_year, dataset.end_year)
@@ -155,21 +172,55 @@ def evaluate(model, dataset, target, split_at=None, device=None):
 if __name__ == '__main__':
     # set dataset
     glacier_name = "STORSTROMMEN"
-    start, mid, end = 1979, 2008, 2018
+    start, mid, end = 1980, 2008, 2018
+    last_year_smb = True
+    hidden_dim = 256
+    reg = 0
+    save_every = 1
+    eval_every = 1
+    epochs = 50
+    run_hcnn = True
+    from datasets import Glacier_dmdt, ERA5Datasets, GlacierDataset
+    from models import GlacierModel, LSTMPredictor, HCNN, VCNN, SeparateFeatureExtractor
     train_smb = Glacier_dmdt(glacier_name, start, mid, path="glacier_dmdt.csv")
     train_data = ERA5Datasets(glacier_name, start, mid, path="ECMWF_reanalysis_data")
     test_smb = Glacier_dmdt(glacier_name, start, end, path="glacier_dmdt.csv")
+    test_last_year_dmdt = Glacier_dmdt(glacier_name, start - 1, end - 1, path="glacier_dmdt.csv")
     test_data = ERA5Datasets(glacier_name, start, end, path="ECMWF_reanalysis_data")
-    glacier_dataset = GlacierDataset([train_data], [train_smb])
+    glacier_dataset = GlacierDataset([train_data], [train_smb], last_year=last_year_smb)
     loader = DataLoader(glacier_dataset, batch_size=len(train_data), shuffle=False)
 
     cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loss_function = torch.nn.MSELoss()
 
-    lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
-    extractor = HCNN(in_channel=5, output_dim=256, vertical_dim=326)
-    glacier_model = GlacierModel(extractor, lstm_model, name="HCNNLSTM-STOR")
+    lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=hidden_dim, n_layers=1, bidirection=True, p=0.5,
+                               use_last_year_smb=last_year_smb)
+    extractor = SeparateFeatureExtractor(layers=[
+        VCNN(in_channel=1, output_dim=256, vertical_dim=test_data[0].shape[1]),
+        VCNN(in_channel=1, output_dim=256, vertical_dim=test_data[0].shape[1]),
+        VCNN(in_channel=1, output_dim=256, vertical_dim=test_data[0].shape[1]),
+        VCNN(in_channel=1, output_dim=256, vertical_dim=test_data[0].shape[1]),
+        VCNN(in_channel=1, output_dim=256, vertical_dim=test_data[0].shape[1]),
+    ])
+    glacier_model = GlacierModel(extractor, lstm_model, name="VCNNLSTM-{:.6}".format(glacier_name), use_last_year_smb=last_year_smb)
     trainer(glacier_model, train_loader=loader, testdataset=test_data, testsmb=test_smb,
-            show=False, device=cuda, epochs=2, lr=0.002, reg=0, save_every=1, eval_every=1,
-            test_split_at=mid, best_only=True,
+            show=False, device=cuda, epochs=epochs, lr=0.002, reg=reg, save_every=save_every, eval_every=eval_every,
+            test_last_year_dmdt=test_last_year_dmdt, test_split_at=mid, best_only=True, use_last_year=last_year_smb,
             critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
+
+    if run_hcnn:
+        lstm_model = LSTMPredictor(layers=None, input_dim=256, hidden_dim=hidden_dim, n_layers=1, bidirection=True, p=0.5,
+                                   use_last_year_smb=last_year_smb)
+        extractor = SeparateFeatureExtractor(layers=[
+            HCNN(in_channel=1, output_dim=256, vertical_dim=test_data[0].shape[1]),
+            HCNN(in_channel=1, output_dim=256, vertical_dim=test_data[0].shape[1]),
+            HCNN(in_channel=1, output_dim=256, vertical_dim=test_data[0].shape[1]),
+            HCNN(in_channel=1, output_dim=256, vertical_dim=test_data[0].shape[1]),
+            HCNN(in_channel=1, output_dim=256, vertical_dim=test_data[0].shape[1]),
+        ])
+        glacier_model = GlacierModel(extractor, lstm_model, name="HCNNLSTM-{:.6}".format(glacier_name),
+                                     use_last_year_smb=last_year_smb)
+        trainer(glacier_model, train_loader=loader, testdataset=test_data, testsmb=test_smb,
+                show=False, device=cuda, epochs=epochs, lr=0.002, reg=reg, save_every=save_every, eval_every=eval_every,
+                test_last_year_dmdt=test_last_year_dmdt, test_split_at=mid, best_only=True, use_last_year=last_year_smb,
+                critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
