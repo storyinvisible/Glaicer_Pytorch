@@ -170,12 +170,13 @@ class Glacier_dmdt(Dataset):
 
 
 class GlacierDataset3D(Dataset):
-    def __init__(self, glacier, start_year, end_year, path="glaicer_dmdt.csv"):
+    def __init__(self, glacier, start_year, end_year, last_year = False, path="glaicer_dmdt.csv"):
         super(GlacierDataset3D, self).__init__()
         if start_year > end_year:
             start_year, end_year = end_year, start_year
         self.start_year = start_year
         self.end_year = end_year
+        self.last_year = last_year
         self.glacier = glacier
         self.df = pd.read_csv(path)
         start_indx, end_idx = self.get_index_year()
@@ -193,13 +194,22 @@ class GlacierDataset3D(Dataset):
         new_df = self.df[self.df["NAME"] == self.glacier]
         index_dict = []
         start = False
-        for year in self.df.columns:
-            if start:
-                index_dict.append(year)
-            if str(self.start_year) in year:
-                start = True
-            if str(self.end_year) in year:
-                break
+        if self.last_year:
+            for year in self.df.columns:
+                if start:
+                    index_dict.append(year)
+                if str(self.start_year-1) in year:
+                    start = True
+                if str(self.end_year) in year:
+                    break
+        else:
+            for year in self.df.columns:
+                if start:
+                    index_dict.append(year)
+                if str(self.start_year) in year:
+                    start = True
+                if str(self.end_year) in year:
+                    break
         return index_dict, new_df
 
     def __len__(self):
@@ -207,7 +217,10 @@ class GlacierDataset3D(Dataset):
 
     def __getitem__(self, index):
         x = np.array([data[index] for data in self.ERA5Data])
-        return x, float(self.new_df[self.index_dict[index]])
+        if self.last_year:
+            return (x, float(self.new_df[self.index_dict[index]])), float(self.new_df[self.index_dict[index+1]])
+        else:
+            return x, float(self.new_df[self.index_dict[index]])
 
 
 # TODO please fix error line: cond_1 = df_1["ALL_same"] == "FALSE" raise KeyError(key) from err KeyError: 'ALL_same'
