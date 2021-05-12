@@ -86,7 +86,7 @@ def trainer(model, train_loader, testdataset, critic, optimizer, epochs=500, lr=
         loss_plot.savefig("{}/{}_loss.png".format(os.path.join(base_path, "plots"), model.name))
         loss_plot.close()
         # loss record
-        pd.DataFrame({"train_loss": train_losses, "eval_loss": test_losses}).to_csv(os.path.join(base_path, "loss.csv"))
+        pd.DataFrame({"train_loss": train_losses, "eval_loss": test_losses}).to_csv(os.path.join(base_path, "loss_{}.csv".format(testdataset.glacier)))
         # Final evaluation
         predicted, actual = evaluate(model, testdataset, last_year_dmdt=test_last_year_dmdt, 
                                                 use_last_year=use_last_year, device=device)
@@ -166,7 +166,7 @@ if __name__ == '__main__':
                 start_year = 1980
             last_year_smb = True
             dataset = GlacierDataset3D(name, start_year, 2018, last_year=last_year_smb, path="glacier_dmdt.csv")
-            datasets = train_val_dataset(dataset)
+            datasets = train_val_dataset(dataset, val_split=0.3)
             last_year_dmdt = Glacier_dmdt(name, start_year - 1, 2017, path="glacier_dmdt.csv")
             train_loader = DataLoader(datasets['train'], batch_size=1)
             test_dataset = datasets['val']
