@@ -222,6 +222,59 @@ class GlacierDataset3D(Dataset):
         else:
             return x, float(self.new_df[self.index_dict[index]])
 
+class GlacierDatasetNoPadding3D(Dataset):
+    def __init__(self, glacier, start_year, end_year, last_year = False, path="glaicer_dmdt.csv"):
+        super(GlacierDatasetNoPadding3D, self).__init__()
+        if start_year > end_year:
+            start_year, end_year = end_year, start_year
+        self.start_year = start_year
+        self.end_year = end_year
+        self.last_year = last_year
+        self.glacier = glacier
+        self.df = pd.read_csv(path)
+        start_indx, end_idx = self.get_index_year()
+        self.index_dict, self.new_df = self.get_index_dict()
+        self.ERA5Data = [data[start_indx:end_idx + 1] for data in extract_data_no_padding(glacier)]
+
+    def get_index_year(self):
+        if self.start_year < 1979 or self.start_year > 2017:
+            raise ValueError(f"Start year does not exist: {self.start_year}")
+        if self.end_year < 1980 or self.end_year > 2018:
+            raise ValueError(f"End year does not exist: {self.end_year}")
+        return self.start_year - 1979, self.end_year - 1980
+
+    def get_index_dict(self):
+        new_df = self.df[self.df["NAME"] == self.glacier]
+        index_dict = []
+        start = False
+        if self.last_year:
+            for year in self.df.columns:
+                if start:
+                    index_dict.append(year)
+                if str(self.start_year-1) in year:
+                    start = True
+                if str(self.end_year) in year:
+                    break
+        else:
+            for year in self.df.columns:
+                if start:
+                    index_dict.append(year)
+                if str(self.start_year) in year:
+                    start = True
+                if str(self.end_year) in year:
+                    break
+        return index_dict, new_df
+
+    def __len__(self):
+        return self.end_year - self.start_year
+
+    def __getitem__(self, index):
+        x = np.array([data[index] for data in self.ERA5Data])
+        if self.last_year:
+            return (x, float(self.new_df[self.index_dict[index]])), float(self.new_df[self.index_dict[index+1]])
+        else:
+            return x, float(self.new_df[self.index_dict[index]])
+
 
 # TODO please fix error line: cond_1 = df_1["ALL_same"] == "FALSE" raise KeyError(key) from err KeyError: 'ALL_same'
 def clean_glaicer_select(glacier_path="glaicer_dmdt.csv", glacier_path2="Glacier_select.csv"):
@@ -395,3 +448,142 @@ def data_padding(data):
     fixed_matrix[0:data.shape[0], 0:data.shape[1]] = data
     res = np.expand_dims(fixed_matrix, 0)
     return res
+
+def extract_data_no_padding(name):
+    # get all types of data
+    file_obj = nc.Dataset(
+        "./new_era5_data.nc")  # ['longitude', 'latitude', 'expver', 'time', 'u10', 'v10', 'd2m', 't2m', 'msl', 'mwd', 'sst', 'sp', 'tp']
+    k = file_obj.variables.keys()
+    temperature = file_obj.variables['t2m'][:]
+    pressure = file_obj.variables['sp'][:]
+    dew_point_temperature = file_obj.variables['d2m'][:]
+    glaciers = pd.read_csv('./Glacier_select.csv')
+    t = file_obj.variables['time']
+    times = nc.num2date(t, 'hours since 1900-01-01 00:00:00', only_use_python_datetimes=True,
+                        only_use_cftime_datetimes=False)[:]
+    lon = file_obj.variables['longitude'][:]
+    lat = file_obj.variables['latitude'][:]
+    sst = file_obj.variables['sst'][:].filled(-999)
+    tcc = file_obj.variables['tcc'][:]
+    total_precipitation = file_obj.variables['tp'][:]
+    u_wind = file_obj.variables['u10'][:]
+    v_wind = file_obj.variables['v10'][:]
+    temperature_data = []
+    pressure_data = []
+    wind_data = []
+    precipitation_data = []
+    cloudcover_data = []
+    ocean_data = []
+    dew_point_temperature_data = []
+    # proceed on each glacier
+    for m in range(len(glaciers)):
+        glacier_name = glaciers.loc[m]['NAME']
+        if glacier_name != name:
+            continue
+        glat = glaciers.loc[m]['LAT']
+        glon = glaciers.loc[m]['LON']
+        area = glaciers.loc[m]['AREA']
+        r = np.sqrt(area)
+        left1 = len(lon)
+        left2 = len(lon)
+        right1 = 0
+        down1 = 0
+        right2 = 0
+        down2 = 0
+        up1 = len(lat)
+        up2 = len(lat)
+        # find 4 bounds of the square
+        for i in range(len(lat)):
+            for j in range(len(lon)):
+                d = haversine(glon, glat, lon[j], lat[i])
+                if d <= 200:
+                    left1 = min(left1, j)
+                    right1 = max(right1, j)
+                    up1 = min(up1, i)
+                    down1 = max(down1, i)
+                if d <= r:
+                    left2 = min(left2, j)
+                    right2 = max(right2, j)
+                    up2 = min(up2, i)
+                    down2 = max(down2, i)
+        # from every month
+        print("Get data...")
+        for tt in tqdm(range(4, len(times) - 35)):
+            # get data
+            ocean_data_temp = []
+            temperature_data_temp = []
+            wind_data_temp = []
+            pressure_data_temp = []
+            precipitation_data_temp = []
+            cloudcover_data_temp = []
+            dew_point_temperature_data_temp = []
+            for i in range(up1, down1 + 1):
+                temp1, temp2, temp3, temp4, temp5, temp6, temp7 = [], [], [], [], [], [], []
+                for j in range(left1, right1 + 1):
+                    # check if inside the glacier
+                    if left2 <= j <= right2 and up2 <= i <= down2:
+                        if sst[0][0][i][j] == -999:
+                            temp1.append(temperature[tt][0][i][j])
+                            temp2.append(np.sqrt(u_wind[tt][0][i][j] ** 2 + v_wind[tt][0][i][j] ** 2))
+                            temp3.append(pressure[tt][0][i][j])
+                            temp4.append(total_precipitation[tt][0][i][j])
+                            temp5.append(tcc[tt][0][i][j])
+                            temp6.append(dew_point_temperature[tt][0][i][j])
+                        else:
+                            temp1.append(0.0)
+                            temp2.append(0.0)
+                            temp3.append(0.0)
+                            temp4.append(0.0)
+                            temp5.append(0.0)
+                            temp6.append(0.0)
+                    else:
+                        temp1.append(0.0)
+                        temp2.append(0.0)
+                        temp3.append(0.0)
+                        temp4.append(0.0)
+                        temp5.append(0.0)
+                        temp6.append(0.0)
+                    # check ocean data
+                    if sst[0][0][i][j] != -999:
+                        temp7.append(sst[tt][0][i][j])
+                    else:
+                        temp7.append(0.0)
+                temperature_data_temp.append(temp1)
+                wind_data_temp.append(temp2)
+                pressure_data_temp.append(temp3)
+                precipitation_data_temp.append(temp4)
+                cloudcover_data_temp.append(temp5)
+                dew_point_temperature_data_temp.append(temp6)
+                ocean_data_temp.append(temp7)
+            temperature_data_temp = np.array(temperature_data_temp)
+            wind_data_temp = np.array(wind_data_temp)
+            pressure_data_temp = np.array(pressure_data_temp)
+            precipitation_data_temp = np.array(precipitation_data_temp)
+            cloudcover_data_temp = np.array(cloudcover_data_temp)
+            dew_point_temperature_data_temp = np.array(dew_point_temperature_data_temp)
+            ocean_data_temp = np.array(ocean_data_temp)
+            if len(temperature_data)>0:
+                temperature_data = np.append(temperature_data, np.expand_dims(temperature_data_temp, 0), axis=0)
+                wind_data = np.append(wind_data, np.expand_dims(wind_data_temp, 0), axis=0)
+                pressure_data = np.append(pressure_data, np.expand_dims(pressure_data_temp, 0), axis=0)
+                precipitation_data = np.append(precipitation_data, np.expand_dims(precipitation_data_temp, 0), axis=0)
+                cloudcover_data = np.append(cloudcover_data, np.expand_dims(cloudcover_data_temp, 0), axis=0)
+                dew_point_temperature_data = np.append(dew_point_temperature_data,
+                                                    np.expand_dims(dew_point_temperature_data_temp, 0), axis=0)
+                ocean_data = np.append(ocean_data, np.expand_dims(ocean_data_temp, 0), axis=0)
+            else:
+                temperature_data = np.expand_dims(temperature_data_temp, 0)
+                wind_data = np.expand_dims(wind_data_temp, 0)
+                pressure_data = np.expand_dims(pressure_data_temp, 0)
+                precipitation_data = np.expand_dims(precipitation_data_temp, 0)
+                cloudcover_data = np.expand_dims(cloudcover_data_temp, 0)
+                dew_point_temperature_data = np.expand_dims(dew_point_temperature_data_temp, 0)
+                ocean_data = np.expand_dims(ocean_data_temp, 0)
+        break
+    return temperature_data.reshape(-1, 12, temperature_data.shape[1], temperature_data.shape[2]), \
+           wind_data.reshape(-1, 12, wind_data.shape[1], wind_data.shape[2]), \
+           pressure_data.reshape(-1, 12, pressure_data.shape[1], pressure_data.shape[2]), \
+           precipitation_data.reshape(-1, 12, precipitation_data.shape[1], precipitation_data.shape[2]), \
+           cloudcover_data.reshape(-1, 12, cloudcover_data.shape[1], cloudcover_data.shape[2]), \
+           dew_point_temperature_data.reshape(-1, 12, dew_point_temperature_data.shape[1], dew_point_temperature_data.shape[2]), \
+           ocean_data.reshape(-1, 12, ocean_data.shape[1], ocean_data.shape[2])
