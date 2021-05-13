@@ -121,7 +121,7 @@ def evaluate(model, dataset, last_year_dmdt=None, use_last_year=False, device=No
         if use_last_year:
             for d, last_dmdt in zip(DataLoader(dataset, batch_size=1), DataLoader(last_year_dmdt, batch_size=1)):
                 d, t = d
-                data = torch.tensor(d[0]).float().to(device)
+                data = Variable(d[0]).float().to(device)
                 last_dmdt = Variable(d[1]).unsqueeze(1).float().to(device)
                 pred = model(data, last_dmdt)
                 result.append(pred.item())
@@ -164,6 +164,7 @@ if __name__ == '__main__':
             # dataset = GlacierDatasetNoPadding3D(name, start_year, 2018, last_year=last_year_smb, path="glacier_dmdt.csv")
             datasets = train_val_dataset(dataset, val_split=0.3, shuffle=False)
             last_year_dmdt = Glacier_dmdt(name, start_year - 1, 2017, path="glacier_dmdt.csv")
+            test_last_year_dmdt = train_val_dataset(last_year_dmdt, val_split=0.3)['val']
             train_loader = DataLoader(datasets['train'], batch_size=1)
             test_dataset = datasets['val']
             extractor = SeparateFeatureExtractor3D(output_dim=256, layers=[
@@ -175,7 +176,7 @@ if __name__ == '__main__':
             cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             loss_function = torch.nn.MSELoss()
             trainer(glacier_model, train_loader=train_loader, testdataset=test_dataset, show=False,
-                    test_last_year_dmdt=last_year_dmdt, use_last_year=last_year_smb,
+                    test_last_year_dmdt=test_last_year_dmdt, use_last_year=last_year_smb,
                     device=cuda, epochs=20, lr=0.002, reg=0.001, save_every=10, eval_every=1, test_split_at=15,
                     critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
         except Exception as e:
