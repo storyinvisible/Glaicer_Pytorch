@@ -136,11 +136,11 @@ def evaluate(model, dataset, last_year_dmdt=None, use_last_year=False, device=No
     return result, real
 
 def train_val_dataset(dataset, val_split=0.3, shuffle=False):
-    split_idx = int(len(dataset)*val_split)
+    split_idx = len(dataset) - int(len(dataset)*val_split)
     indices = list(range(len(dataset)))
     if shuffle:
         np.random.shuffle(indices)
-    train_idx, val_idx = indices[split_idx:], indices[:split_idx]
+    train_idx, val_idx = indices[:split_idx], indices[split_idx-1:]
     datasets = {}
     datasets['train'] = Subset(dataset, train_idx)
     datasets['val'] = Subset(dataset, val_idx)
@@ -154,30 +154,30 @@ if __name__ == '__main__':
     glacier_info = pd.read_csv("Glacier_select.csv")
     glaciers =list(glacier_info["NAME"])
     for name in glaciers:
-        # try:
-        new_df = glacier_info[glacier_info["NAME"]==name]
-        start_year = 2018 - int(new_df["Years"])
-        if start_year < 1980:
-            start_year = 1980
-        last_year_smb = True
-        dataset = GlacierDataset3D(name, start_year, 2018, last_year=last_year_smb, path="glacier_dmdt.csv")
-        # dataset = GlacierDatasetNoPadding3D(name, start_year, 2018, last_year=last_year_smb, path="glacier_dmdt.csv")
-        datasets = train_val_dataset(dataset, val_split=0.3, shuffle=False)
-        last_year_dmdt = Glacier_dmdt(name, start_year - 1, 2017, path="glacier_dmdt.csv")
-        train_loader = DataLoader(datasets['train'], batch_size=1)
-        test_dataset = datasets['val']
-        extractor = SeparateFeatureExtractor3D(output_dim=256, layers=[
-            TWCNN2D(),TWCNN2D(),TWCNN2D(),TWCNN2D(),TWCNN2D(),TWCNN2D(), TWCNN2D()
-        ])
-        ann_model = ANNPredictor2(layers=None, input_dim=256, p=0.5, use_last_year_smb=last_year_smb)
-        # ann_model = ANNPredictor2(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
-        glacier_model = GlacierModel(extractor, ann_model, use_last_year_smb=last_year_smb, name="TWCNNLSTM3DNOPADDING")
-        cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        loss_function = torch.nn.MSELoss()
-        trainer(glacier_model, train_loader=train_loader, testdataset=test_dataset, show=False,
-                test_last_year_dmdt=last_year_dmdt, use_last_year=last_year_smb,
-                device=cuda, epochs=20, lr=0.002, reg=0.001, save_every=10, eval_every=1, test_split_at=15,
-                critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
-        # except Exception as e:
-        #     print(e)
-        #     continue
+        try:
+            new_df = glacier_info[glacier_info["NAME"]==name]
+            start_year = 2018 - int(new_df["Years"])
+            if start_year < 1980:
+                start_year = 1980
+            last_year_smb = True
+            dataset = GlacierDataset3D(name, start_year, 2018, last_year=last_year_smb, path="glacier_dmdt.csv")
+            # dataset = GlacierDatasetNoPadding3D(name, start_year, 2018, last_year=last_year_smb, path="glacier_dmdt.csv")
+            datasets = train_val_dataset(dataset, val_split=0.3, shuffle=False)
+            last_year_dmdt = Glacier_dmdt(name, start_year - 1, 2017, path="glacier_dmdt.csv")
+            train_loader = DataLoader(datasets['train'], batch_size=1)
+            test_dataset = datasets['val']
+            extractor = SeparateFeatureExtractor3D(output_dim=256, layers=[
+                TWCNN2D(),TWCNN2D(),TWCNN2D(),TWCNN2D(),TWCNN2D(),TWCNN2D(), TWCNN2D()
+            ])
+            ann_model = ANNPredictor2(layers=None, input_dim=256, p=0.5, use_last_year_smb=last_year_smb)
+            # ann_model = ANNPredictor2(layers=None, input_dim=256, hidden_dim=256, n_layers=1, bidirection=False, p=0.5)
+            glacier_model = GlacierModel(extractor, ann_model, use_last_year_smb=last_year_smb, name="TWCNNLSTM3DNOPADDING")
+            cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            loss_function = torch.nn.MSELoss()
+            trainer(glacier_model, train_loader=train_loader, testdataset=test_dataset, show=False,
+                    test_last_year_dmdt=last_year_dmdt, use_last_year=last_year_smb,
+                    device=cuda, epochs=20, lr=0.002, reg=0.001, save_every=10, eval_every=1, test_split_at=15,
+                    critic=loss_function, optimizer=torch.optim.Adam, save_path="saved_models")
+        except Exception as e:
+            print(e)
+            continue
